@@ -1,0 +1,55 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #05070d;
+  color: #ccc;
+  font-family: monospace;
+  overflow: hidden;
+}
+#wrap {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+#mainView {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+}
+#sidebar {
+  flex: 0 0 210px;
+  background: #111820;
+  border-left: 1px solid #334;
+  padding: 8px;
+  overflow-y: auto;
+}
+.ctrlRow { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+button, select {
+  background: #1a2430; color: #ccc; border: 1px solid #445;
+  padding: 4px 6px; cursor: pointer; font-family: monospace; font-size: 11px;
+}
+button:hover, select:hover { background: #2a3648; }
+.sysHeader {
+  font-size: 11px; color: #8ab; margin-top: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.bodyRow {
+  font-size: 11px; color: #9ab; padding: 3px 4px; cursor: pointer;
+}
+.bodyRow:hover { background: #1a2430; }
+
+.sysHeader { cursor: pointer; }
+.sysHeader.tracked { color: #5fd; }
+
+.clockBox {
+  font-size: 13px; color: #5fd; background: #0a1216;
+  border: 1px solid #234; padding: 4px 6px; margin-bottom: 8px;
+  text-align: center; letter-spacing: 1px;
+}
+.infoBox {
+  font-size: 11px; color: #9ab; background: #0a1216;
+  border: 1px solid #234; padding: 6px; margin-bottom: 8px;
+}
+.infoBox a { color: #5fd; }
+.bodyRow.selected { color: #5fd; font-weight: bold; }

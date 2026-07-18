@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ASCII">
+<title>Orbital Map</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="mainView"></canvas>
+
+  <div id="sidebar">
+    <div class="ctrlRow">
+      <button id="playBtn">Pause</button>
+      <select id="speedSelect">
+        <option value="1">1 min = 1 day</option>
+        <option value="7">1 min = 1 week</option>
+        <option value="30" selected>1 min = 1 month</option>
+        <option value="365">1 min = 1 year</option>
+      </select>
+    </div>
+    <div class="ctrlRow">
+      <button id="resetViewBtn">Reset View</button>
+    </div>
+    <div id="clockDisplay" class="clockBox">T+00:00:00</div>
+    <div id="infoPanel" class="infoBox">Click a body to select it.</div>
+    <div id="bodyList"></div>
+  </div>
+</div>
+
+<script src="orbits.js"></script>
+<script src="systems.js"></script>
+<script src="worldpos.js"></script>
+<script src="render.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
