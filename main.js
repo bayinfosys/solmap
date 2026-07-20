@@ -1,3 +1,5 @@
+const MIN_ZOOM = 1e-4; // pxPerAU can never go below this - prevents a stuck-at-zero zoom
+
 const canvas = document.getElementById('mainView');
 const ctx = canvas.getContext('2d');
 
@@ -20,6 +22,16 @@ let trackOffsetY = 0;
 const infoPanel = document.getElementById('infoPanel');
 const clockDisplay = document.getElementById('clockDisplay');
 
+document.getElementById('jumpDateBtn').addEventListener('click', function () {
+  const val = document.getElementById('dateJump').value;
+  if (!val) return;
+  mapState.t = dateToSimTime(new Date(val + 'T12:00:00Z'));
+});
+
+document.getElementById('jumpNowBtn').addEventListener('click', function () {
+  mapState.t = dateToSimTime(new Date());
+});
+
 document.getElementById('speedSelect').addEventListener('change', function (e) {
   daysPerRealMinute = parseFloat(e.target.value);
 });
@@ -31,7 +43,19 @@ document.getElementById('playBtn').addEventListener('click', function (e) {
 });
 
 document.getElementById('resetViewBtn').addEventListener('click', function () {
-  jumpToSystem('sun');
+  jumpToSystem('solar-system');
+});
+
+document.getElementById('hillshadeToggle').addEventListener('change', function (e) {
+  mapState.layers.hillshade = e.target.checked;
+});
+
+document.getElementById('histToggle').addEventListener('change', function (e) {
+  mapState.layers.hillshadeHistogram = e.target.checked;
+});
+
+document.getElementById('residualToggle').addEventListener('change', function (e) {
+  mapState.layers.hillshadeResidual = e.target.checked;
 });
 
 function animateZoomTo(targetZoom, durationMs) {
@@ -47,19 +71,42 @@ function jumpToSystem(systemId) {
   trackOffsetY = 0;
   const maxR = getSystemMaxOrbitRadius(systemId);
   const targetPx = Math.min(canvas.width, canvas.height) * 0.35;
-  const targetZoom = maxR > 0 ? targetPx / maxR : mapState.camera.pxPerAU;
+  let targetZoom = (maxR > 0 && targetPx > 0) ? targetPx / maxR : mapState.camera.pxPerAU;
+  targetZoom = Math.max(MIN_ZOOM, targetZoom);
   animateZoomTo(targetZoom, 1200);
 }
 
 function selectBody(systemId, bodyId) {
   mapState.selected.systemId = systemId;
   mapState.selected.bodyId = bodyId;
-  const body = mapState.systems[systemId].bodies[bodyId];
+  const sys = mapState.systems[systemId];
+  const body = sys.bodies[bodyId];
   const wikiName = body.name.replace(/ /g, '_');
-  infoPanel.innerHTML =
-    '<strong>' + body.name + '</strong><br>' +
-    'a = ' + body.a.toFixed(6) + ' AU, e = ' + body.e.toFixed(4) + '<br>' +
-    '<a href="https://en.wikipedia.org/wiki/' + wikiName + '" target="_blank" rel="noopener">Wikipedia</a>';
+  const periodYears = computeOrbitPeriodYears(body.a, sys.GM);
+
+  const facts = [];
+  facts.push(['Semi-major axis', body.a.toFixed(6) + ' AU']);
+  facts.push(['Eccentricity', body.e.toFixed(4)]);
+  facts.push(['Orbital period', periodYears.toFixed(3) + ' yr']);
+
+  if (body.massRatio !== undefined) {
+    const extrema = computeOrbitExtrema(body.a, body.e, body.omega);
+    const rH = hillRadius(body.a, body.massRatio);
+    facts.push(['Periapsis', formatDistanceAU(extrema.periapsis.r)]);
+    facts.push(['Apoapsis', formatDistanceAU(extrema.apoapsis.r)]);
+    facts.push(['Hill radius', formatDistanceAU(rH)]);
+  }
+
+  // New fields - not yet populated for most bodies, shown only when present
+  if (body.massKg !== undefined) facts.push(['Mass', body.massKg.toExponential(3) + ' kg']);
+  if (body.radiusKm !== undefined) facts.push(['Radius', body.radiusKm.toLocaleString() + ' km']);
+
+  let html = '<div class="infoName">' + body.name + '</div><ul class="infoList">';
+  facts.forEach(function (f) {
+    html += '<li><span class="infoLabel">' + f[0] + '</span><span class="infoValue">' + f[1] + '</span></li>';
+  });
+  html += '</ul><a href="https://en.wikipedia.org/wiki/' + wikiName + '" target="_blank" rel="noopener">Wikipedia</a>';
+  infoPanel.innerHTML = html;
 
   const rows = document.querySelectorAll('.bodyRow');
   for (let i = 0; i < rows.length; i++) {
@@ -99,11 +146,12 @@ window.addEventListener('mousemove', function (e) {
   }
   lastDragX = e.clientX; lastDragY = e.clientY;
 });
+
 canvas.addEventListener('wheel', function (e) {
   e.preventDefault();
   cameraAnim = null;
   const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-  mapState.camera.pxPerAU *= factor;
+  mapState.camera.pxPerAU = Math.max(MIN_ZOOM, mapState.camera.pxPerAU * factor);
 }, { passive: false });
 
 function buildSidebar() {
@@ -111,8 +159,7 @@ function buildSidebar() {
   let html = '';
   for (const sysId in mapState.systems) {
     const sys = mapState.systems[sysId];
-    html += '<div class="sysHeader" data-sys="' + sysId + '">' + sysId +
-      ' <input type="checkbox" data-layer="' + sysId + '"' + (mapState.layers[sysId] ? ' checked' : '') + '></div>';
+    html += '<div class="sysHeader" data-sys="' + sysId + '">' + sysId + '</div>';
     for (const bodyId in sys.bodies) {
       html += '<div class="bodyRow" data-sys="' + sysId + '" data-body="' + bodyId + '">' + sys.bodies[bodyId].name + '</div>';
     }
@@ -127,19 +174,16 @@ function buildSidebar() {
   }
   const headers = el.querySelectorAll('.sysHeader');
   for (let i = 0; i < headers.length; i++) {
-    headers[i].addEventListener('click', function (e) {
-      if (e.target.tagName === 'INPUT') return;
+    headers[i].addEventListener('click', function () {
       jumpToSystem(this.getAttribute('data-sys'));
-    });
-  }
-  const boxes = el.querySelectorAll('input[data-layer]');
-  for (let i = 0; i < boxes.length; i++) {
-    boxes[i].addEventListener('change', function () {
-      mapState.layers[this.getAttribute('data-layer')] = this.checked;
     });
   }
 }
 buildSidebar();
+
+document.getElementById('lagrangeGlobalToggle').addEventListener('change', function (e) {
+  mapState.lagrangeEnabled = e.target.checked;
+});
 
 // "Earth clock" - a stopwatch of total simulated elapsed time, NOT a real
 // date (per your note, no absolute epoch is tracked). Rolls past 24h
@@ -152,6 +196,7 @@ function formatClock(tYears) {
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   return 'T+' + pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
 }
+
 
 function loop(nowMs) {
   const deltaMs = nowMs - lastMs;
@@ -170,9 +215,13 @@ function loop(nowMs) {
     mapState.camera.y = origin.y + trackOffsetY;
   }
 
-  clockDisplay.textContent = formatClock(mapState.t);
+  advancePrecession(mapState.t); // NEW - the "update" half of update/render
+
+  clockDisplay.textContent = simTimeToDate(mapState.t).toISOString().slice(0, 10) + '  ' + formatClock(mapState.t);
 
   drawMap(ctx, canvas.width, canvas.height);
   requestAnimationFrame(loop);
 }
+
 requestAnimationFrame(loop);
+

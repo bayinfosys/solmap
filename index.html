@@ -14,6 +14,7 @@
     <div class="ctrlRow">
       <button id="playBtn">Pause</button>
       <select id="speedSelect">
+        <option value="0.0006944">Real-time (1:1)</option>
         <option value="1">1 min = 1 day</option>
         <option value="7">1 min = 1 week</option>
         <option value="30" selected>1 min = 1 month</option>
@@ -23,6 +24,28 @@
     <div class="ctrlRow">
       <button id="resetViewBtn">Reset View</button>
     </div>
+    <div class="ctrlRow">
+      <label style="font-size:11px;">Lagrange points</label>
+      <input type="checkbox" id="lagrangeGlobalToggle" checked>
+    </div>
+    <div class="ctrlRow">
+      <label style="font-size:11px;">Hillshade</label>
+      <input type="checkbox" id="hillshadeToggle" checked>
+    </div>
+    <div class="ctrlRow">
+      <label style="font-size:11px;">Histogram</label>
+      <input type="checkbox" id="histToggle" checked>
+    </div>
+    <div class="ctrlRow">
+      <label style="font-size:11px;">Exclude primary</label>
+      <input type="checkbox" id="residualToggle" checked>
+    </div>
+    <div class="ctrlRow">
+      <input type="date" id="dateJump" value="2000-01-01">
+      <button id="jumpDateBtn">Go</button>
+      <button id="jumpNowBtn">Now</button>
+    </div>
+    <div id="clockDisplay" class="clockBox">T+00:00:00</div>
     <div id="clockDisplay" class="clockBox">T+00:00:00</div>
     <div id="infoPanel" class="infoBox">Click a body to select it.</div>
     <div id="bodyList"></div>
@@ -31,7 +54,13 @@
 
 <script src="orbits.js"></script>
 <script src="systems.js"></script>
+<script src="systems-build.js"></script>
+<script src="physics.js"></script>
 <script src="worldpos.js"></script>
+<script src="lagrange.js"></script>
+<script src="epoch.js"></script>
+<script src="terrain.js"></script>
+<script src="hillshade.js"></script>
 <script src="render.js"></script>
 <script src="main.js"></script>
 </body>
