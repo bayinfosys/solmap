@@ -20,6 +20,22 @@ function readTheme() {
 }
 const theme = readTheme();
 
+// Linear interpolation between two "#rrggbb" hex colours, t in 0..1.
+// Used to drive canvas strokeStyle/fillStyle from an animGet() fade
+// value - see anim.js for the channel that supplies t.
+function lerpColor(hexA, hexB, t) {
+  function parse(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    return [parseInt(hex.substring(0, 2), 16), parseInt(hex.substring(2, 4), 16), parseInt(hex.substring(4, 6), 16)];
+  }
+  const a = parse(hexA), b = parse(hexB);
+  const r = Math.round(a[0] + (b[0] - a[0]) * t);
+  const g = Math.round(a[1] + (b[1] - a[1]) * t);
+  const bch = Math.round(a[2] + (b[2] - a[2]) * t);
+  return 'rgb(' + r + ',' + g + ',' + bch + ')';
+}
+
 function hexToRgba(hex, alpha) {
   hex = hex.replace('#', '');
   if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
@@ -269,17 +285,25 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
     const b = sys.bodies[bodyId];
     const st = ellipseState(b.a, b.e, b.omega, t, b.tp, sys.GM, b.direction);
     const isSelected = mapState.selected.systemId === systemId && mapState.selected.bodyId === bodyId;
+    const fadeT = animGet('selection:' + systemId + ':' + bodyId, 0);
 
-    drawOrbitRing(ctx, b.a, b.e, b.omega, cumulativeScale, isSelected ? theme.selected : theme.orbit, isSelected ? 2 : 1);
+    const orbitColor = fadeT > 0 ? lerpColor(theme.orbit, theme.selected, fadeT) : theme.orbit;
+    drawOrbitRing(ctx, b.a, b.e, b.omega, cumulativeScale, orbitColor, 1 + fadeT);
     drawFilledCircle(ctx, st.x, st.y, b.drawR, cumulativeScale, b.color);
 
     if (b.massRatio !== undefined) {
-      drawBodyOrbitMarkers(ctx, b, cumulativeScale, isSelected ? theme.selected : hexToRgba(theme.orbit, 0.6), isSelected);
+      const markerBaseColor = hexToRgba(theme.orbit, 0.6);
+      const markerColor = fadeT > 0 ? lerpColor(markerBaseColor, theme.selected, fadeT) : markerBaseColor;
+      drawBodyOrbitMarkers(ctx, b, cumulativeScale, markerColor, isSelected);
     }
 
-    if (isSelected) {
-      drawRingOutline(ctx, st.x, st.y, b.drawR + 5, cumulativeScale, theme.selected, 1.5);
-      drawBodyLiveDistance(ctx, st, cumulativeScale, theme.text);
+    // Fully additive detail (ring outline, live distance) only appears
+    // once fading in has genuinely started - drawn at fadeT opacity via
+    // hexToRgba rather than gated as a hard boolean, so they fade in/out
+    // in step with everything else on this body rather than popping.
+    if (fadeT > 0.01) {
+      drawRingOutline(ctx, st.x, st.y, b.drawR + 5, cumulativeScale, hexToRgba(theme.selected, fadeT), 1.5);
+      drawBodyLiveDistance(ctx, st, cumulativeScale, hexToRgba(theme.text, fadeT));
     }
 
     if (mapState.lagrangeEnabled && systemId === mapState.selected.systemId) {
@@ -293,7 +317,7 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
       ctx.translate(st.x + 8 / cumulativeScale, st.y - 8 / cumulativeScale);
       ctx.scale(1 / cumulativeScale, 1 / cumulativeScale);
       ctx.font = screenFontPx + 'px monospace';
-      ctx.fillStyle = isSelected ? theme.selected : theme.text;
+      ctx.fillStyle = fadeT > 0 ? lerpColor(theme.text, theme.selected, fadeT) : theme.text;
       ctx.fillText(b.name, 0, 0);
       ctx.restore();
     }

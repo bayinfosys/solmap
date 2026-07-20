@@ -1,9 +1,15 @@
 // Gravity Hillshade: per-pixel relief shading of summed Newtonian
-// potential, coloured via histogram equalization (adapts to whatever's
-// actually in view each frame - no manual gamma/log tuning needed) and
-// a multi-hue ramp. Optional "exclude primary" mode for isolating a
-// system's local structure (moons, Lagrange points) from its dominant
-// central body.
+// potential. Colour is grayscale, driven by log-normalised magnitude
+// (percentile-clipped so a near-singularity pixel under a tracked body
+// can't crush the frame's contrast) with Lambertian hillshading applied
+// on top from the same analytic gradient. Optional "exclude primary"
+// mode isolates a system's local structure (moons, Lagrange points)
+// from its dominant central body's own well.
+//
+// Histogram equalisation and a multi-hue colour ramp were both tried
+// and are not currently in use - see OVERVIEW.md section 4 for why each
+// was considered. If you reintroduce either, update README.md's
+// description of this feature to match.
 
 const hillshadeConfig = {
   resX: 220,
@@ -13,18 +19,7 @@ const hillshadeConfig = {
   lightElevationDeg: 45,
   ambient: 0.35,
   loPercentile: 0.02,
-  hiPercentile: 0.97,
-  eqBins: 256, // upper bound only - buildEqualizer caps this further based on actual sample count, see below
-  colorStops: [
-    { t: 0.00, rgb: [10, 6, 20] },
-    { t: 0.08, rgb: [70, 20, 130] },
-    { t: 0.24, rgb: [40, 60, 200] },
-    { t: 0.40, rgb: [20, 150, 180] },
-    { t: 0.56, rgb: [70, 190, 70] },
-    { t: 0.72, rgb: [230, 210, 40] },
-    { t: 0.88, rgb: [235, 110, 30] },
-    { t: 1.00, rgb: [250, 250, 240] }
-  ]
+  hiPercentile: 0.97
 };
 
 function potentialAt(px, py, massPoints, softening) {
@@ -64,22 +59,6 @@ function lightDirection(azimuthDeg, elevationDeg) {
   return { lx: Math.cos(el) * Math.sin(az), ly: -Math.cos(el) * Math.cos(az), lz: Math.sin(el) };
 }
 
-function rampColor(t, stops) {
-  t = Math.max(0, Math.min(1, t));
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i], b = stops[i + 1];
-    if (t >= a.t && t <= b.t) {
-      const localT = (t - a.t) / (b.t - a.t);
-      return [
-        a.rgb[0] + (b.rgb[0] - a.rgb[0]) * localT,
-        a.rgb[1] + (b.rgb[1] - a.rgb[1]) * localT,
-        a.rgb[2] + (b.rgb[2] - a.rgb[2]) * localT
-      ];
-    }
-  }
-  return stops[stops.length - 1].rgb;
-}
-
 function computeValueHistogram(tValues, numBins) {
   const bins = new Array(numBins).fill(0);
   for (let i = 0; i < tValues.length; i++) {
@@ -89,47 +68,6 @@ function computeValueHistogram(tValues, numBins) {
     bins[b]++;
   }
   return bins;
-}
-
-// Builds a CDF-based equalizer from whatever u-values (0..1, log-
-// normalized magnitude) are actually present this frame. Bin count is
-// capped relative to sample count (avoids empty, gap-producing bins),
-// and the raw histogram is lightly smoothed before the cumulative sum.
-function buildEqualizer(uValues, requestedBins) {
-  const maxUsefulBins = Math.max(8, Math.floor(uValues.length / 20));
-  const numBins = Math.min(requestedBins, maxUsefulBins);
-
-  const hist = new Float64Array(numBins);
-  for (let i = 0; i < uValues.length; i++) {
-    let b = Math.floor(uValues[i] * numBins);
-    if (b < 0) b = 0;
-    if (b >= numBins) b = numBins - 1;
-    hist[b]++;
-  }
-
-  const smoothed = new Float64Array(numBins);
-  for (let b = 0; b < numBins; b++) {
-    const b0 = Math.max(0, b - 1), b1 = Math.min(numBins - 1, b + 1);
-    let sum = 0, count = 0;
-    for (let k = b0; k <= b1; k++) { sum += hist[k]; count++; }
-    smoothed[b] = sum / count;
-  }
-
-  const cdf = new Float64Array(numBins);
-  let running = 0;
-  for (let b = 0; b < numBins; b++) {
-    running += smoothed[b];
-    cdf[b] = running;
-  }
-  const total = running;
-  for (let b = 0; b < numBins; b++) cdf[b] = total > 0 ? cdf[b] / total : b / numBins;
-
-  return function (u) {
-    let b = Math.floor(u * numBins);
-    if (b < 0) b = 0;
-    if (b >= numBins) b = numBins - 1;
-    return cdf[b];
-  };
 }
 
 function computeHillshadeBuffer(massPoints, bounds, config) {
@@ -172,28 +110,20 @@ function computeHillshadeBuffer(massPoints, bounds, config) {
     uArr[idx] = (Math.log(mag) - logLo) / Math.max(logHi - logLo, 1e-30);
   }
 
-  const equalize = buildEqualizer(uArr, config.eqBins);
-
   const light = lightDirection(config.lightAzimuthDeg, config.lightElevationDeg);
   const data = new Uint8ClampedArray(n * 4);
-  const finalT = new Float64Array(n);
 
   for (let idx = 0; idx < n; idx++) {
-    //const eq = equalize(uArr[idx]);
-    let t = uArr[idx]; // 1 - eq;
-    t = Math.max(0, Math.min(1, t));
-    finalT[idx] = t;
-    const color = [t*255., t*255., t*255.]; //rampColor(t, config.colorStops);
-
+    const t = Math.max(0, Math.min(1, uArr[idx]));
     const norm = slopeToNormal(gxArr[idx], gyArr[idx], config.steepnessGain);
     const dot = norm.nx * light.lx + norm.ny * light.ly + norm.nz * light.lz;
     const brightness = config.ambient + (1 - config.ambient) * ((dot + 1) / 2);
-    //const brightness = 1.0;
 
+    const shade = t * 255 * brightness;
     const o = idx * 4;
-    data[o] = color[0] * brightness;
-    data[o + 1] = color[1] * brightness;
-    data[o + 2] = color[2] * brightness;
+    data[o] = shade;
+    data[o + 1] = shade;
+    data[o + 2] = shade;
     data[o + 3] = 255;
   }
 
@@ -201,7 +131,7 @@ function computeHillshadeBuffer(massPoints, bounds, config) {
     pixels: data,
     minV: -hiMag,
     maxV: -loMag,
-    histogram: computeValueHistogram(finalT, 40)
+    histogram: computeValueHistogram(uArr, 40)
   };
 }
 

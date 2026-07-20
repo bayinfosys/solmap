@@ -80,6 +80,7 @@ const mapState = {
   t: 0,
   camera: { x: 0, y: 0, pxPerAU: 130 },
   selected: { systemId: null, bodyId: null },
+  anim: { channels: {} },
   lagrangeEnabled: true,
   systems: buildAllSystems(RAW_SYSTEMS),
   layers: LAYER_DEFAULTS

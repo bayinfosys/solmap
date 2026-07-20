@@ -50,11 +50,12 @@ button:hover, select:hover { background: #2a3648; }
 }
 .bodyRow {
   font-size: 11px; color: #9ab; padding: 3px 4px; cursor: pointer;
+  transition: color 0.25s ease, background-color 0.25s ease;
 }
 .bodyRow:hover { background: #1a2430; }
+.bodyRow.selected { color: #5fd; background: rgba(85,255,221,0.10); }
 
 .sysHeader { cursor: pointer; }
-.sysHeader.tracked { color: #5fd; }
 
 .clockBox {
   font-size: 13px; color: #5fd; background: #0a1216;
@@ -66,7 +67,6 @@ button:hover, select:hover { background: #2a3648; }
   border: 1px solid #234; padding: 6px; margin-bottom: 8px;
 }
 .infoBox a { color: #5fd; }
-.bodyRow.selected { color: #5fd; font-weight: bold; }
 
 .infoName { font-size: 13px; font-weight: bold; color: var(--color-text); margin-bottom: 4px; }
 .infoList { list-style: none; margin: 0 0 6px 0; padding: 0; }

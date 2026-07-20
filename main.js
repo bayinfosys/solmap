@@ -14,10 +14,23 @@ let playing = true;
 let daysPerRealMinute = parseFloat(document.getElementById('speedSelect').value);
 let lastMs = performance.now();
 
-let cameraAnim = null;
 let trackedSystemId = null;
-let trackOffsetX = 0;
-let trackOffsetY = 0;
+
+const SELECTION_FADE_TAU_SEC = 0.15;
+const ZOOM_SMOOTH_TAU_SEC = 0.25;
+const PAN_SMOOTH_TAU_SEC = 0.25;
+
+// Seed the zoom channel from the camera's actual starting value, snapped
+// (no animation) - every later zoom change (wheel, jumpToSystem) just
+// moves this channel's target and lets advanceAnim() do the easing.
+animSetValue('camera:logZoom', Math.log(mapState.camera.pxPerAU), Math.log(mapState.camera.pxPerAU), ZOOM_SMOOTH_TAU_SEC);
+
+// Elapsed SIMULATED PLAYBACK time, shown as a stopwatch - deliberately
+// separate from mapState.t (which is absolute, epoch-relative sim time
+// used for real dates). Only advances while playing. Resets to 0 on a
+// date jump, since a jump starts a new "session" of watching this run.
+// Never goes negative, since it only ever accumulates forward from 0.
+let elapsedPlaybackYears = 0;
 
 const infoPanel = document.getElementById('infoPanel');
 const clockDisplay = document.getElementById('clockDisplay');
@@ -26,10 +39,12 @@ document.getElementById('jumpDateBtn').addEventListener('click', function () {
   const val = document.getElementById('dateJump').value;
   if (!val) return;
   mapState.t = dateToSimTime(new Date(val + 'T12:00:00Z'));
+  elapsedPlaybackYears = 0;
 });
 
 document.getElementById('jumpNowBtn').addEventListener('click', function () {
   mapState.t = dateToSimTime(new Date());
+  elapsedPlaybackYears = 0;
 });
 
 document.getElementById('speedSelect').addEventListener('change', function (e) {
@@ -58,25 +73,31 @@ document.getElementById('residualToggle').addEventListener('change', function (e
   mapState.layers.hillshadeResidual = e.target.checked;
 });
 
-function animateZoomTo(targetZoom, durationMs) {
-  cameraAnim = {
-    startZoom: mapState.camera.pxPerAU, targetZoom: targetZoom,
-    startMs: performance.now(), durationMs: durationMs || 1200
-  };
-}
-
+// Eases both pan (camera:offsetX/Y chasing 0) and zoom (camera:logZoom -
+// log-space, since zoom reads naturally as a ratio, not a difference).
 function jumpToSystem(systemId) {
+  const originAtJump = getSystemWorldOrigin(systemId, mapState.t);
+  const startOffsetX = mapState.camera.x - originAtJump.x;
+  const startOffsetY = mapState.camera.y - originAtJump.y;
+
   trackedSystemId = systemId;
-  trackOffsetX = 0;
-  trackOffsetY = 0;
+  animSetValue('camera:offsetX', startOffsetX, 0, PAN_SMOOTH_TAU_SEC);
+  animSetValue('camera:offsetY', startOffsetY, 0, PAN_SMOOTH_TAU_SEC);
+
   const maxR = getSystemMaxOrbitRadius(systemId);
   const targetPx = Math.min(canvas.width, canvas.height) * 0.35;
   let targetZoom = (maxR > 0 && targetPx > 0) ? targetPx / maxR : mapState.camera.pxPerAU;
   targetZoom = Math.max(MIN_ZOOM, targetZoom);
-  animateZoomTo(targetZoom, 1200);
+  animSet('camera:logZoom', Math.log(targetZoom), ZOOM_SMOOTH_TAU_SEC);
 }
 
 function selectBody(systemId, bodyId) {
+  const newKey = systemId + ':' + bodyId;
+  const prevKey = (mapState.selected.systemId && mapState.selected.bodyId)
+    ? mapState.selected.systemId + ':' + mapState.selected.bodyId : null;
+  if (prevKey && prevKey !== newKey) animSet('selection:' + prevKey, 0, SELECTION_FADE_TAU_SEC);
+  animSet('selection:' + newKey, 1, SELECTION_FADE_TAU_SEC, 0); // 0 = fade in from nothing, not a snap
+
   mapState.selected.systemId = systemId;
   mapState.selected.bodyId = bodyId;
   const sys = mapState.systems[systemId];
@@ -97,7 +118,6 @@ function selectBody(systemId, bodyId) {
     facts.push(['Hill radius', formatDistanceAU(rH)]);
   }
 
-  // New fields - not yet populated for most bodies, shown only when present
   if (body.massKg !== undefined) facts.push(['Mass', body.massKg.toExponential(3) + ' kg']);
   if (body.radiusKm !== undefined) facts.push(['Radius', body.radiusKm.toLocaleString() + ' km']);
 
@@ -117,20 +137,19 @@ function selectBody(systemId, bodyId) {
 
 function jumpToBody(systemId, bodyId) {
   selectBody(systemId, bodyId);
-  const child = getChildSystems(systemId).filter(function (s) { return s.originBodyId === bodyId; })[0];
-  if (child) {
-    jumpToSystem(child.id);
-    return;
-  }
   trackedSystemId = systemId;
-  trackOffsetX = 0;
-  trackOffsetY = 0;
+  animSetValue('camera:offsetX', 0, 0, PAN_SMOOTH_TAU_SEC);
+  animSetValue('camera:offsetY', 0, 0, PAN_SMOOTH_TAU_SEC);
 }
 
 let dragging = false, lastDragX = 0, lastDragY = 0;
 canvas.addEventListener('mousedown', function (e) {
   dragging = true; lastDragX = e.clientX; lastDragY = e.clientY;
-  cameraAnim = null;
+  // Freeze any in-flight pan animation at its current position, so a
+  // drag started mid-transition doesn't fight the eased motion.
+  const ox = animGet('camera:offsetX', 0), oy = animGet('camera:offsetY', 0);
+  animSetValue('camera:offsetX', ox, ox, PAN_SMOOTH_TAU_SEC);
+  animSetValue('camera:offsetY', oy, oy, PAN_SMOOTH_TAU_SEC);
 });
 window.addEventListener('mouseup', function () { dragging = false; });
 window.addEventListener('mousemove', function (e) {
@@ -138,8 +157,12 @@ window.addEventListener('mousemove', function (e) {
   const dx = (e.clientX - lastDragX) / mapState.camera.pxPerAU;
   const dy = (e.clientY - lastDragY) / mapState.camera.pxPerAU;
   if (trackedSystemId) {
-    trackOffsetX -= dx;
-    trackOffsetY -= dy;
+    // Direct manipulation - set value AND target together so there's no
+    // lag or residual chase while the user is actively dragging.
+    const newX = animGet('camera:offsetX', 0) - dx;
+    const newY = animGet('camera:offsetY', 0) - dy;
+    animSetValue('camera:offsetX', newX, newX, PAN_SMOOTH_TAU_SEC);
+    animSetValue('camera:offsetY', newY, newY, PAN_SMOOTH_TAU_SEC);
   } else {
     mapState.camera.x -= dx;
     mapState.camera.y -= dy;
@@ -147,11 +170,16 @@ window.addEventListener('mousemove', function (e) {
   lastDragX = e.clientX; lastDragY = e.clientY;
 });
 
+// Wheel only moves the zoom channel's TARGET, from the target's current
+// value (not the live, still-animating value) - so repeated scroll
+// ticks accumulate toward an ever-further goal rather than restarting
+// from wherever the easing has currently reached.
 canvas.addEventListener('wheel', function (e) {
   e.preventDefault();
-  cameraAnim = null;
+  const currentTargetZoom = Math.exp(animGetTarget('camera:logZoom', Math.log(mapState.camera.pxPerAU)));
   const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-  mapState.camera.pxPerAU = Math.max(MIN_ZOOM, mapState.camera.pxPerAU * factor);
+  const newTargetZoom = Math.max(MIN_ZOOM, currentTargetZoom * factor);
+  animSet('camera:logZoom', Math.log(newTargetZoom), ZOOM_SMOOTH_TAU_SEC);
 }, { passive: false });
 
 function buildSidebar() {
@@ -185,9 +213,9 @@ document.getElementById('lagrangeGlobalToggle').addEventListener('change', funct
   mapState.lagrangeEnabled = e.target.checked;
 });
 
-// "Earth clock" - a stopwatch of total simulated elapsed time, NOT a real
-// date (per your note, no absolute epoch is tracked). Rolls past 24h
-// freely rather than wrapping, since there's no day-boundary meaning here.
+// Formats a small elapsed-time value (years) as a HH:MM:SS stopwatch.
+// Only ever called on elapsedPlaybackYears, which is >= 0 by
+// construction, so no negative-input handling is needed here.
 function formatClock(tYears) {
   const totalSeconds = tYears * 365.25 * 24 * 3600;
   const hours = Math.floor(totalSeconds / 3600);
@@ -197,31 +225,32 @@ function formatClock(tYears) {
   return 'T+' + pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
 }
 
-
 function loop(nowMs) {
   const deltaMs = nowMs - lastMs;
   lastMs = nowMs;
 
-  if (cameraAnim) {
-    const p = Math.min(1, (nowMs - cameraAnim.startMs) / cameraAnim.durationMs);
-    mapState.camera.pxPerAU = cameraAnim.startZoom + (cameraAnim.targetZoom - cameraAnim.startZoom) * p;
-    if (p >= 1) cameraAnim = null;
+  advanceAnim(deltaMs);
+
+  mapState.camera.pxPerAU = Math.max(MIN_ZOOM, Math.exp(animGet('camera:logZoom', Math.log(mapState.camera.pxPerAU))));
+
+  if (playing) {
+    const dYears = (daysPerRealMinute * (deltaMs / 60000)) / 365.25;
+    mapState.t += dYears;
+    elapsedPlaybackYears += dYears;
   }
-  if (playing) mapState.t += (daysPerRealMinute * (deltaMs / 60000)) / 365.25;
 
   if (trackedSystemId) {
     const origin = getSystemWorldOrigin(trackedSystemId, mapState.t);
-    mapState.camera.x = origin.x + trackOffsetX;
-    mapState.camera.y = origin.y + trackOffsetY;
+    mapState.camera.x = origin.x + animGet('camera:offsetX', 0);
+    mapState.camera.y = origin.y + animGet('camera:offsetY', 0);
   }
 
-  advancePrecession(mapState.t); // NEW - the "update" half of update/render
+  advancePrecession(mapState.t); // the "update" half of update/render
 
-  clockDisplay.textContent = simTimeToDate(mapState.t).toISOString().slice(0, 10) + '  ' + formatClock(mapState.t);
+  clockDisplay.textContent = simTimeToDate(mapState.t).toISOString().slice(0, 10) + '  ' + formatClock(elapsedPlaybackYears);
 
   drawMap(ctx, canvas.width, canvas.height);
   requestAnimationFrame(loop);
 }
 
 requestAnimationFrame(loop);
-
