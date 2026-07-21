@@ -9,8 +9,6 @@ shaded like a relief map.
 No game engine, no build step, no dependencies. Plain HTML5 Canvas and
 JavaScript.
 
-**[Live demo →](#)**
-
 ---
 
 ## What this actually is
@@ -123,4 +121,4 @@ the number.
 
 ## License
 
-MIT
+GPL v3
