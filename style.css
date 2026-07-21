@@ -73,3 +73,11 @@ button:hover, select:hover { background: #2a3648; }
 .infoList li { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; border-bottom: 1px solid #1a2430; }
 .infoLabel { color: #789; }
 .infoValue { color: var(--color-text); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,13 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-GB">
 <head>
-<meta charset="UTF-8">
-<title>Orbital Map</title>
 <link rel="stylesheet" href="style.css">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbital Map: a real, physically-grounded solar system map</title>
+<meta name="description" content="An interactive solar system map with real orbital mechanics, real Lagrange points, apsidal precession, and a per-pixel gravitational terrain view. No illustration, no game engine - real computed physics in the browser.">
+<link rel="canonical" href="https://www.bayis.co.uk/solmap/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Orbital Map: a real, physically-grounded solar system map">
+<meta property="og:description" content="Real orbital mechanics, real Lagrange points, and a per-pixel gravitational terrain view of the solar system - computed, not illustrated.">
+<meta property="og:url" content="https://www.bayis.co.uk/solmap/">
+<meta property="og:image" content="https://www.bayis.co.uk/solmap/preview.png">
+
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Orbital Map",
+  "description": "An interactive solar system map with real orbital mechanics, real Lagrange points, apsidal precession, and a per-pixel gravitational terrain view.",
+  "url": "https://www.bayis.co.uk/solmap/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any (web browser)"
+}
+</script>
+
 </head>
 <body>
 
 <div id="wrap">
+  <div class="visually-hidden">
+    <h1>Orbital Map: an interactive, physically-grounded map of the solar system</h1>
+    <p>
+      Real orbital mechanics for planets, moons, asteroids in the solar system.
+      Computed from real J2000 orbital elements.
+      Includes real Lagrange points (L1-L5), Hill spheres, apsidal precession for moons,
+      and a per-pixel gravitational terrain view of summed Newtonian potential across the solar system.
+    </p>
+  </div>
+
   <canvas id="mainView"></canvas>
 
   <div id="sidebar">
