@@ -177,7 +177,7 @@ const LAYER_DEFAULTS = {
   'uranian-system': true,
   'neptunian-system': true,
   'plutonian-system': true,
-  hillshade: true,
-  hillshadeHistogram: true,
+  hillshade: false,
+  hillshadeHistogram: false,
   hillshadeResidual: true
 };
