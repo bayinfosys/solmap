@@ -1,3 +1,7 @@
+import { mapState } from '../state/state.js';
+import { ellipseState } from '../core/orbits.js';
+import { getSystemWorldOrigin, getPrimaryName } from './worldpos.js';
+
 // Lagrange points for a primary/secondary pair. All formulas are the
 // standard small-mass-ratio approximations (first order in massRatio),
 // not exact restricted-three-body solutions - accurate enough to look
@@ -13,7 +17,7 @@ const MASS_RATIO_SKIP_THRESHOLD = 1e-9;
 // hillRadius: standard formula, r_H = a * (m2 / 3*M1)^(1/3).
 // Only needs the mass RATIO (secondary/primary), never absolute mass -
 // this is why no GM/kg values were needed anywhere in systems.js.
-function hillRadius(a, massRatio) {
+export function hillRadius(a, massRatio) {
   return a * Math.pow(massRatio / 3, 1 / 3);
 }
 
@@ -23,7 +27,7 @@ function hillRadius(a, massRatio) {
 // frame as the secondary's own position (i.e. relative to the primary,
 // which sits at the origin of that frame) - consistent with how bodies
 // are already positioned relative to their system's origin elsewhere.
-function computeLagrangePoints(secondaryState, massRatio) {
+export function computeLagrangePoints(secondaryState, massRatio) {
   const r = secondaryState.r;
   const theta = secondaryState.theta;
   const rH = hillRadius(r, massRatio);
@@ -68,13 +72,13 @@ function computeLagrangePoints(secondaryState, massRatio) {
 // five points already translated into world coordinates, plus a label
 // prefix following the standard "Primary-Secondary" naming convention
 // (e.g. "Sun-Earth L1").
-function getLagrangePointsWorld(systemId, bodyId, t) {
+export function getLagrangePointsWorld(systemId, bodyId, t) {
   const sys = mapState.systems[systemId];
   const body = sys.bodies[bodyId];
   if (body.massRatio === undefined) return null;
 
   const primaryOrigin = getSystemWorldOrigin(systemId, t);
-  const st = ellipseState(body.a, body.e, body.omega, t, body.tp, sys.GM, body.direction);
+  const st = ellipseState(body.a, body.e, body.omegaBase, body.omegaDotRadPerYear, t, body.tp, sys.GM, body.direction);
   const pts = computeLagrangePoints(st, body.massRatio);
 
   const labelPrefix = getPrimaryName(systemId) + '-' + body.name;

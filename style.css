@@ -6,6 +6,7 @@
   --color-lagrange-dim: #7a5a52;
   --color-orbit: #223344;
   --color-sun: #ffd35c;
+  --color-route: #ffb347;
   --label-bg: #ffffff;
   --label-text: #111111;
   --label-outline: #000000;
@@ -74,6 +75,25 @@ button:hover, select:hover { background: #2a3648; }
 .infoLabel { color: #789; }
 .infoValue { color: var(--color-text); }
 
+.missionBox {
+  font-size: 11px; color: #9ab; background: #0a1216;
+  border: 1px solid #234; padding: 6px; margin-bottom: 8px;
+}
+.missionName { font-size: 13px; font-weight: bold; color: var(--color-text); margin-bottom: 4px; }
+.missionLegs { list-style: none; margin: 0 0 6px 0; padding: 0; }
+.missionLegs li { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; border-bottom: 1px solid #1a2430; }
+.missionLegLabel { color: #789; }
+.missionLegValue { color: var(--color-text); }
+.missionLegLocal { color: #7a5a52; }
+.missionLegHeliocentric { color: var(--color-text); }
+.missionTotal { font-size: 12px; font-weight: bold; color: #5fd; margin-top: 4px; text-align: right; }
+
+.missionSection { margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #1a2430; }
+.missionSectionHeader { font-size: 11px; color: #8ab; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.watchLegBtn { font-size: 10px; padding: 2px 4px; }
+.missionMeta { font-size: 10px; color: #789; margin-top: 2px; }
+.routeToggleRow { display: flex; align-items: center; gap: 4px; justify-content: space-between; }
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -81,3 +101,5 @@ button:hover, select:hover { background: #2a3648; }
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.missionLegPrimaryLocal { color: #9ab; }
