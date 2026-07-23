@@ -1,3 +1,8 @@
+import { mapState } from '../state/state.js';
+import { SOLAR_GM } from '../data/systems.js';
+import { ellipseState } from '../core/orbits.js';
+import { getSystemWorldOrigin } from '../physics/worldpos.js';
+
 // Gravity Hillshade: per-pixel relief shading of summed Newtonian
 // potential. Colour is grayscale, driven by log-normalised magnitude
 // (percentile-clipped so a near-singularity pixel under a tracked body
@@ -11,7 +16,7 @@
 // was considered. If you reintroduce either, update README.md's
 // description of this feature to match.
 
-const hillshadeConfig = {
+export const hillshadeConfig = {
   resX: 220,
   resY: 160,
   steepnessGain: 3.0,
@@ -73,7 +78,7 @@ function computeValueHistogram(tValues, numBins) {
   return bins;
 }
 
-function computeHillshadeBuffer(massPoints, bounds, config) {
+export function computeHillshadeBuffer(massPoints, bounds, config) {
   const resX = config.resX, resY = config.resY;
   const n = resX * resY;
   const values = new Float64Array(n);
@@ -143,7 +148,7 @@ function computeHillshadeBuffer(massPoints, bounds, config) {
 // Scoped to the current viewport (plus a margin) rather than the whole
 // map - prevents distant, unrelated systems from swamping the
 // percentile clip with a near-constant background offset.
-function gatherRelevantMassPoints(t, bounds) {
+export function gatherRelevantMassPoints(t, bounds) {
   const marginX = (bounds.xMax - bounds.xMin) * 0.5;
   const marginY = (bounds.yMax - bounds.yMin) * 0.5;
   const xMin = bounds.xMin - marginX, xMax = bounds.xMax + marginX;
@@ -160,7 +165,7 @@ function gatherRelevantMassPoints(t, bounds) {
     for (const bodyId in sys.bodies) {
       const b = sys.bodies[bodyId];
       if (b.massRatio === undefined) continue;
-      const st = ellipseState(b.a, b.e, b.omega, t, b.tp, sys.GM, b.direction);
+      const st = ellipseState(b.a, b.e, b.omegaBase, b.omegaDotRadPerYear, t, b.tp, sys.GM, b.direction);
       const wx = origin.x + st.x, wy = origin.y + st.y;
       if (wx >= xMin && wx <= xMax && wy >= yMin && wy <= yMax) {
         points.push({ x: wx, y: wy, GM: sys.GM * b.massRatio });
@@ -174,7 +179,7 @@ function gatherRelevantMassPoints(t, bounds) {
 // Excludes the given system's own primary from a mass-point list -
 // isolates local structure (moons, Lagrange points) from a dominant
 // central body's own well.
-function excludeSystemPrimary(massPoints, systemId) {
+export function excludeSystemPrimary(massPoints, systemId) {
   if (systemId === 'solar-system') {
     return massPoints.filter(function (m) { return !(m.x === 0 && m.y === 0 && m.GM === SOLAR_GM); });
   }

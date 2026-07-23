@@ -1,5 +1,5 @@
-const KM_PER_AU = 149597870.7;
-const SOLAR_GM = 4 * Math.PI * Math.PI; // AU^3 / year^2 - physical constant, not computed from body data
+export const KM_PER_AU = 149597870.7;
+export const SOLAR_GM = 4 * Math.PI * Math.PI; // AU^3 / year^2 - physical constant, not computed from body data
 
 // Orbit accuracy note: planetary a/e/L0/varpi are real J2000 values
 // (Standish table). Satellite a/e/omega0/M0/papsisYears are real J2000
@@ -8,7 +8,7 @@ const SOLAR_GM = 4 * Math.PI * Math.PI; // AU^3 / year^2 - physical constant, no
 // full n-body perturbation are still NOT modeled - only satellite
 // apsidal precession is, via papsisYears. No inclination anywhere.
 
-const RAW_SYSTEMS = {
+export const RAW_SYSTEMS = {
   'solar-system': {
     id: 'solar-system',
     parentSystemId: null,
@@ -23,7 +23,7 @@ const RAW_SYSTEMS = {
         name: 'Venus', color: '#e0b64a', drawR: 5, massRatio: 2.447e-6,
         links: { wiki: 'https://en.wikipedia.org/wiki/Venus' } },
       earth: { aKm: 1.00000011 * KM_PER_AU, e: 0.01671022, L0: 100.46435, omega0: 102.94719, isMeanAnomaly: false,
-        name: 'Earth', color: '#4a90d9', drawR: 5, massRatio: 3.003e-6,
+        name: 'Earth', color: '#4a90d9', drawR: 5, massRatio: 3.003e-6, radiusKm: 6371,
         links: { wiki: 'https://en.wikipedia.org/wiki/Earth' } },
       mars: { aKm: 1.52366231 * KM_PER_AU, e: 0.09341233, L0: 355.45332, omega0: 336.04084, isMeanAnomaly: false,
         name: 'Mars', color: '#c1440e', drawR: 5, massRatio: 3.227e-7,
@@ -69,7 +69,7 @@ const RAW_SYSTEMS = {
     primaryMassRatio: 0.0000030,
     bodies: {
       moon: { aKm: 384400, e: 0.0554, omega0: 318.15, M0: 135.27, isMeanAnomaly: true, papsisYears: 5.997,
-        name: 'Moon', color: '#ccc', drawR: 2, massRatio: 0.0123,
+        name: 'Moon', color: '#ccc', drawR: 2, massRatio: 0.0123, radiusKm: 1737.4,
         links: { wiki: 'https://en.wikipedia.org/wiki/Moon' } }
     }
   },
@@ -168,7 +168,7 @@ const RAW_SYSTEMS = {
   }
 };
 
-const LAYER_DEFAULTS = {
+export const LAYER_DEFAULTS = {
   'solar-system': true,
   'martian-system': true,
   'terran-system': true,

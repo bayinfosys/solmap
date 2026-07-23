@@ -1,3 +1,11 @@
+import { mapState } from '../state/state.js';
+import { ellipseState, orbitPeriodYears } from '../core/orbits.js';
+import { animGet } from '../state/anim.js';
+import { getChildSystems, getSystemMaxOrbitRadius } from '../physics/worldpos.js';
+import { computeLagrangePoints } from '../physics/lagrange.js';
+import { gatherRelevantMassPoints, excludeSystemPrimary, computeHillshadeBuffer, hillshadeConfig } from './hillshade.js';
+import { getVisibleRoutes } from '../state/routeLibrary.js';
+
 // ============================================================
 // THEME
 // ============================================================
@@ -18,6 +26,7 @@ function readTheme() {
     labelOutline: v('--label-outline')
   };
 }
+
 const theme = readTheme();
 
 // Linear interpolation between two "#rrggbb" hex colours, t in 0..1.
@@ -56,7 +65,7 @@ const LPOINT_LOD_MIN_PX = 4;
 // knows about colour, pixels, or canvas.
 // ============================================================
 
-function computeOrbitExtrema(a, e, omega) {
+export function computeOrbitExtrema(a, e, omega) {
   // Periapsis/apoapsis position is independent of travel direction -
   // both are fixed geometric points on the ellipse regardless of
   // whether the body is prograde or retrograde.
@@ -68,25 +77,7 @@ function computeOrbitExtrema(a, e, omega) {
   };
 }
 
-function computeOrbitPeriodYears(a, GM) {
-  return 2 * Math.PI * Math.sqrt((a * a * a) / GM);
-}
-
-// Bundles everything drawSystem needs to label a body's orbit, computed
-// once per frame per body rather than scattered inline.
-function computeOrbitInfo(body, sys, currentState) {
-  const extrema = computeOrbitExtrema(body.a, body.e, body.omega);
-  return {
-    a: body.a,
-    e: body.e,
-    r: currentState.r,
-    periodYears: computeOrbitPeriodYears(body.a, sys.GM),
-    periapsis: extrema.periapsis,
-    apoapsis: extrema.apoapsis
-  };
-}
-
-function formatDistanceAU(au) {
+export function formatDistanceAU(au) {
   if (au < 0.001) return (au * 149597870.7).toFixed(0) + ' km';
   return au.toFixed(4) + ' AU';
 }
@@ -218,8 +209,8 @@ function drawLabelChip(ctx, x, y, text, textColorUnused, cumulativeScale) {
 // selected. a/e/T have moved to the sidebar info panel (see main.js) -
 // this function now only draws the things that are spatially meaningful
 // or genuinely change frame to frame.
-function drawBodyOrbitMarkers(ctx, body, cumulativeScale, color, showLabels) {
-  const extrema = computeOrbitExtrema(body.a, body.e, body.omega);
+function drawBodyOrbitMarkers(ctx, body, omega, cumulativeScale, color, showLabels) {
+  const extrema = computeOrbitExtrema(body.a, body.e, omega);
   drawDiamond(ctx, extrema.periapsis.x, extrema.periapsis.y, 2.5, cumulativeScale, color);
   drawDiamond(ctx, extrema.apoapsis.x, extrema.apoapsis.y, 2.5, cumulativeScale, color);
   if (showLabels) {
@@ -242,8 +233,8 @@ function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
   if (body.massRatio === undefined) return;
 
   const sys = mapState.systems[systemId];
-  const st = ellipseState(body.a, body.e, body.omega, t, body.tp, sys.GM, body.direction);
-  const pts = computeLagrangePoints(st, body.massRatio, body.direction);
+  const st = ellipseState(body.a, body.e, body.omegaBase, body.omegaDotRadPerYear, t, body.tp, sys.GM, body.direction);
+  const pts = computeLagrangePoints(st, body.massRatio);
 
   const isSelected = mapState.selected.systemId === systemId && mapState.selected.bodyId === bodyId;
   const apparentOrbitPx = st.r * cumulativeScale;
@@ -285,18 +276,19 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
 
   for (const bodyId in sys.bodies) {
     const b = sys.bodies[bodyId];
-    const st = ellipseState(b.a, b.e, b.omega, t, b.tp, sys.GM, b.direction);
+    const omega = b.omegaBase + b.omegaDotRadPerYear * t;
+    const st = ellipseState(b.a, b.e, b.omegaBase, b.omegaDotRadPerYear, t, b.tp, sys.GM, b.direction);
     const isSelected = mapState.selected.systemId === systemId && mapState.selected.bodyId === bodyId;
     const fadeT = animGet('selection:' + systemId + ':' + bodyId, 0);
 
     const orbitColor = fadeT > 0 ? lerpColor(theme.orbit, theme.selected, fadeT) : theme.orbit;
-    drawOrbitRing(ctx, b.a, b.e, b.omega, cumulativeScale, orbitColor, 1 + fadeT);
+    drawOrbitRing(ctx, b.a, b.e, omega, cumulativeScale, orbitColor, 1 + fadeT);
     drawFilledCircle(ctx, st.x, st.y, b.drawR, cumulativeScale, b.color);
 
     if (b.massRatio !== undefined) {
       const markerBaseColor = hexToRgba(theme.orbit, 0.6);
       const markerColor = fadeT > 0 ? lerpColor(markerBaseColor, theme.selected, fadeT) : markerBaseColor;
-      drawBodyOrbitMarkers(ctx, b, cumulativeScale, markerColor, isSelected);
+      drawBodyOrbitMarkers(ctx, b, omega, cumulativeScale, markerColor, isSelected);
     }
 
     // Fully additive detail (ring outline, live distance) only appears
@@ -384,8 +376,8 @@ function drawGravityHillshade(ctx, w, h) {
   const bounds = { xMin: cam.x - halfW, xMax: cam.x + halfW, yMin: cam.y - halfH, yMax: cam.y + halfH };
 
   let massPoints = gatherRelevantMassPoints(mapState.t, bounds);
-  if (mapState.layers.hillshadeResidual && trackedSystemId) {
-    massPoints = excludeSystemPrimary(massPoints, trackedSystemId);
+  if (mapState.layers.hillshadeResidual && mapState.trackedSystemId) {
+    massPoints = excludeSystemPrimary(massPoints, mapState.trackedSystemId);
   }
   const result = computeHillshadeBuffer(massPoints, bounds, hillshadeConfig);
 
@@ -406,9 +398,34 @@ function drawGravityHillshade(ctx, w, h) {
   }
 }
 
-// Single definition - the earlier duplicate (hardcoded colours, no
-// theme) has been removed. This is the only drawMap in the file.
-function drawMap(ctx, w, h) {
+// Draws one displayed route as a dashed polyline connecting each
+// waypoint's real world position, with a marker and label per stop.
+// Deliberately dashed/schematic, using the two bodies' TRUE angular
+// positions on their real dates (so it correctly aligns once the clock
+// reaches an intercept date) - but this is NOT the probe's actual
+// curved trajectory (see physics/route.js's own note on why), it's a
+// topological connector, same spirit as the London-Underground-style
+// delta-v maps this feature was inspired by.
+function drawRoute(ctx, points, cumulativeScale, color) {
+  if (!points || points.length < 2) return;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2 / cumulativeScale;
+  ctx.setLineDash([6 / cumulativeScale, 4 / cumulativeScale]);
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.stroke();
+  ctx.restore();
+
+  points.forEach(function (p) {
+    drawDiamond(ctx, p.x, p.y, 4, cumulativeScale, color);
+    drawLabelChip(ctx, p.x, p.y - 12 / cumulativeScale, p.label, color, cumulativeScale);
+  });
+}
+
+export function drawMap(ctx, w, h) {
   ctx.fillStyle = theme.bg;
   ctx.fillRect(0, 0, w, h);
 
@@ -432,6 +449,10 @@ function drawMap(ctx, w, h) {
 
   drawFilledCircle(ctx, 0, 0, 7, mapState.camera.pxPerAU, theme.sun);
   drawSystem(ctx, 'solar-system', mapState.t, mapState.camera.pxPerAU);
+
+  getVisibleRoutes(mapState.currentRoutes).forEach(function (route) {
+    drawRoute(ctx, route.points, mapState.camera.pxPerAU, route.color);
+  });
 
   ctx.restore();
 }

@@ -1,3 +1,13 @@
+import { mapState } from './state/state.js';
+import { animSetValue, animSet, animGet, animGetTarget, advanceAnim } from './state/anim.js';
+import { getSystemWorldOrigin, getSystemMaxOrbitRadius, getBodyWorldPosition } from './physics/worldpos.js';
+import { dateToSimTime, simTimeToDate } from './core/epoch.js';
+import { ellipseState, orbitalSpeed, orbitPeriodYears } from './core/orbits.js';
+import { computeOrbitExtrema, formatDistanceAU, drawMap } from './render/render.js';
+import { hillRadius } from './physics/lagrange.js';
+import { computeRoute, KM_PER_SEC_PER_AU_PER_YEAR } from './physics/route.js';
+import { setRoute, removeRoute, setRouteVisible } from './state/routeLibrary.js';
+
 const MIN_ZOOM = 1e-4; // pxPerAU can never go below this - prevents a stuck-at-zero zoom
 
 const canvas = document.getElementById('mainView');
@@ -14,7 +24,11 @@ let playing = true;
 let daysPerRealMinute = parseFloat(document.getElementById('speedSelect').value);
 let lastMs = performance.now();
 
-let trackedSystemId = null;
+// Set by watchLeg() - when non-null and playing, the frame loop pauses
+// itself automatically once mapState.t reaches this value. Lets a
+// route leg be "watched" (jump to its start date, resume, arrive and
+// stop) rather than only ever eyeballing a static snapshot.
+let watchUntilT = null;
 
 const SELECTION_FADE_TAU_SEC = 0.15;
 const ZOOM_SMOOTH_TAU_SEC = 0.25;
@@ -34,6 +48,182 @@ let elapsedPlaybackYears = 0;
 
 const infoPanel = document.getElementById('infoPanel');
 const clockDisplay = document.getElementById('clockDisplay');
+const missionInfo = document.getElementById('missionInfo');
+const missionSelect = document.getElementById('missionSelect');
+const activeRoutesEl = document.getElementById('activeRoutes');
+
+for (const missionId in mapState.missions) {
+  const opt = document.createElement('option');
+  opt.value = missionId;
+  opt.textContent = mapState.missions[missionId].name;
+  missionSelect.appendChild(opt);
+}
+
+// Turns one waypoint's real orbital state into a plain {x, y, label}
+// point in the same absolute AU frame drawRoute expects.
+function worldPointFor(systemId, bodyId, t, label) {
+  const pos = getBodyWorldPosition(systemId, bodyId, t);
+  return { x: pos.x, y: pos.y, label: label };
+}
+
+function chordDistanceAU(pointA, pointB) {
+  const dx = pointA.x - pointB.x, dy = pointA.y - pointB.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Bundles one waypoint-to-waypoint transition: the physics breakdown
+// from computeRoute, plus the real elapsed time and map distance
+// between the two points as drawn - both compared against the
+// idealised figures in the UI, never merged into one number. Some
+// fields (totalDeltaVKmS etc.) may be null - see computeRoute's
+// primary-local case (e.g. Earth -> Moon) where a real figure isn't
+// available yet.
+function buildRouteSection(fromPoint, toPoint, fromLabel, toLabel, fromXY, toXY) {
+  const result = computeRoute(fromPoint, toPoint);
+  return {
+    fromLabel: fromLabel,
+    toLabel: toLabel,
+    fromT: fromPoint.t,
+    toT: toPoint.t,
+    legs: result.legs,
+    totalDeltaVKmS: result.totalDeltaVKmS,
+    totalTransferTimeYears: result.totalTransferTimeYears,
+    actualDurationYears: toPoint.t - fromPoint.t,
+    chordAU: chordDistanceAU(fromXY, toXY)
+  };
+}
+
+function renderRouteSections(title, sections) {
+  let html = '<div class="missionName">' + title + '</div>';
+  sections.forEach(function (section, idx) {
+    html += '<div class="missionSection">';
+    html += '<div class="missionSectionHeader">' + section.fromLabel + ' -> ' + section.toLabel +
+      ' <button class="watchLegBtn" data-section-idx="' + idx + '">Watch</button></div>';
+
+    html += '<ul class="missionLegs">';
+    section.legs.forEach(function (leg) {
+      if (leg.deltaVKmS === null || leg.deltaVKmS === undefined) {
+        html += '<li class="missionLegUnavailable"><span class="missionLegLabel">' + leg.label + '</span><span class="missionLegValue">' + (leg.note || 'not yet computable') + '</span></li>';
+        return;
+      }
+      const tierClass = leg.tier === 'local-capture' ? 'missionLegLocal'
+        : leg.tier === 'primary-local-transfer' ? 'missionLegPrimaryLocal'
+        : 'missionLegHeliocentric';
+      html += '<li class="' + tierClass + '">' +
+        '<span class="missionLegLabel">' + leg.label + '</span>' +
+        '<span class="missionLegValue">' + leg.deltaVKmS.toFixed(2) + ' km/s (dep ' + leg.departureBurnKmS.toFixed(2) + ' / arr ' + leg.arrivalBurnKmS.toFixed(2) + ')</span>' +
+        '</li>';
+    });
+    html += '</ul>';
+
+    if (section.totalDeltaVKmS !== null && section.totalDeltaVKmS !== undefined) {
+      html += '<div class="missionTotal">Leg total: ' + section.totalDeltaVKmS.toFixed(2) + ' km/s</div>';
+    }
+    if (section.totalTransferTimeYears !== null && section.totalTransferTimeYears !== undefined) {
+      html += '<div class="missionMeta">Idealised transfer time: ' + (section.totalTransferTimeYears * 365.25).toFixed(0) + ' days'
+        + ' — actual: ' + (section.actualDurationYears * 365.25).toFixed(0) + ' days</div>';
+    } else {
+      html += '<div class="missionMeta">Actual duration: ' + (section.actualDurationYears * 365.25).toFixed(0) + ' days</div>';
+    }
+    html += '<div class="missionMeta">Straight-line map distance: ' + section.chordAU.toFixed(3) + ' AU</div>';
+    html += '</div>';
+  });
+  missionInfo.innerHTML = html;
+
+  const buttons = missionInfo.querySelectorAll('.watchLegBtn');
+  for (let i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', function () {
+      const idx = parseInt(this.getAttribute('data-section-idx'), 10);
+      watchLeg(sections[idx].fromT, sections[idx].toT);
+    });
+  }
+}
+
+function renderActiveRoutesList() {
+  const entries = mapState.currentRoutes.entries;
+  const ids = Object.keys(entries);
+  if (ids.length === 0) {
+    activeRoutesEl.innerHTML = 'No routes displayed.';
+    return;
+  }
+  let html = '<div class="missionName">Displayed routes</div><ul class="missionLegs">';
+  ids.forEach(function (id) {
+    const r = entries[id];
+    html += '<li class="routeToggleRow">' +
+      '<label style="display:flex;align-items:center;gap:4px;">' +
+      '<input type="checkbox" data-route-id="' + id + '" ' + (r.visible ? 'checked' : '') + '>' +
+      '<span style="color:' + r.color + ';">' + r.label + '</span>' +
+      '</label>' +
+      '<button data-remove-id="' + id + '">remove</button>' +
+      '</li>';
+  });
+  html += '</ul>';
+  activeRoutesEl.innerHTML = html;
+
+  const checks = activeRoutesEl.querySelectorAll('input[data-route-id]');
+  for (let i = 0; i < checks.length; i++) {
+    checks[i].addEventListener('change', function () {
+      setRouteVisible(mapState.currentRoutes, this.getAttribute('data-route-id'), this.checked);
+    });
+  }
+  const removes = activeRoutesEl.querySelectorAll('button[data-remove-id]');
+  for (let i = 0; i < removes.length; i++) {
+    removes[i].addEventListener('click', function () {
+      removeRoute(mapState.currentRoutes, this.getAttribute('data-remove-id'));
+      renderActiveRoutesList();
+    });
+  }
+}
+
+function renderMissionRoute(missionId) {
+  const mission = mapState.missions[missionId];
+  const waypoints = mission.waypoints;
+
+  const points = waypoints.map(function (wp) {
+    const bodyName = mapState.systems[wp.systemId].bodies[wp.bodyId].name;
+    return worldPointFor(wp.systemId, wp.bodyId, wp.t, bodyName + ' (' + wp.date + ')');
+  });
+  setRoute(mapState.currentRoutes, missionId, mission.name, points);
+  renderActiveRoutesList();
+
+  const sections = [];
+  for (let i = 1; i < waypoints.length; i++) {
+    const from = waypoints[i - 1], to = waypoints[i];
+    const fromName = mapState.systems[from.systemId].bodies[from.bodyId].name;
+    const toName = mapState.systems[to.systemId].bodies[to.bodyId].name;
+    sections.push(buildRouteSection(
+      { systemId: from.systemId, bodyId: from.bodyId, t: from.t },
+      { systemId: to.systemId, bodyId: to.bodyId, t: to.t },
+      fromName + ' (' + from.date + ')', toName + ' (' + to.date + ')',
+      points[i - 1], points[i]
+    ));
+  }
+  renderRouteSections(mission.name, sections);
+}
+
+missionSelect.addEventListener('change', function (e) {
+  if (!e.target.value) return;
+  renderMissionRoute(e.target.value);
+});
+
+document.getElementById('setFromBtn').addEventListener('click', function () {
+  mapState.routePlanner.pendingRole = 'from';
+});
+document.getElementById('setToBtn').addEventListener('click', function () {
+  mapState.routePlanner.pendingRole = 'to';
+});
+
+// Jumps to a leg's start date, resumes playback, and lets the frame
+// loop auto-pause once mapState.t reaches the leg's end date - see
+// watchUntilT in loop() below.
+function watchLeg(fromT, toT) {
+  mapState.t = fromT;
+  elapsedPlaybackYears = 0;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  watchUntilT = toT;
+  lastMs = performance.now();
+}
 
 document.getElementById('jumpDateBtn').addEventListener('click', function () {
   const val = document.getElementById('dateJump').value;
@@ -80,7 +270,7 @@ function jumpToSystem(systemId) {
   const startOffsetX = mapState.camera.x - originAtJump.x;
   const startOffsetY = mapState.camera.y - originAtJump.y;
 
-  trackedSystemId = systemId;
+  mapState.trackedSystemId = systemId;
   animSetValue('camera:offsetX', startOffsetX, 0, PAN_SMOOTH_TAU_SEC);
   animSetValue('camera:offsetY', startOffsetY, 0, PAN_SMOOTH_TAU_SEC);
 
@@ -103,7 +293,7 @@ function selectBody(systemId, bodyId) {
   const sys = mapState.systems[systemId];
   const body = sys.bodies[bodyId];
   const wikiName = body.name.replace(/ /g, '_');
-  const periodYears = computeOrbitPeriodYears(body.a, sys.GM);
+  const periodYears = orbitPeriodYears(body.a, sys.GM);
 
   const facts = [];
   facts.push(['Semi-major axis', body.a.toFixed(6) + ' AU']);
@@ -111,12 +301,17 @@ function selectBody(systemId, bodyId) {
   facts.push(['Orbital period', periodYears.toFixed(3) + ' yr']);
 
   if (body.massRatio !== undefined) {
-    const extrema = computeOrbitExtrema(body.a, body.e, body.omega);
+    const omega = body.omegaBase + body.omegaDotRadPerYear * mapState.t;
+    const extrema = computeOrbitExtrema(body.a, body.e, omega);
     const rH = hillRadius(body.a, body.massRatio);
     facts.push(['Periapsis', formatDistanceAU(extrema.periapsis.r)]);
     facts.push(['Apoapsis', formatDistanceAU(extrema.apoapsis.r)]);
     facts.push(['Hill radius', formatDistanceAU(rH)]);
   }
+
+  const st = ellipseState(body.a, body.e, body.omegaBase, body.omegaDotRadPerYear, mapState.t, body.tp, sys.GM, body.direction);
+  const speedAUyr = orbitalSpeed(st.r, body.a, sys.GM);
+  facts.push(['Current speed', (speedAUyr * KM_PER_SEC_PER_AU_PER_YEAR).toFixed(3) + ' km/s']);
 
   if (body.massKg !== undefined) facts.push(['Mass', body.massKg.toExponential(3) + ' kg']);
   if (body.radiusKm !== undefined) facts.push(['Radius', body.radiusKm.toLocaleString() + ' km']);
@@ -137,7 +332,7 @@ function selectBody(systemId, bodyId) {
 
 function jumpToBody(systemId, bodyId) {
   selectBody(systemId, bodyId);
-  trackedSystemId = systemId;
+  mapState.trackedSystemId = systemId;
   animSetValue('camera:offsetX', 0, 0, PAN_SMOOTH_TAU_SEC);
   animSetValue('camera:offsetY', 0, 0, PAN_SMOOTH_TAU_SEC);
 }
@@ -158,7 +353,7 @@ window.addEventListener('mousemove', function (e) {
   // vertical drag delta has the opposite sign to the horizontal one.
   const dx = (e.clientX - lastDragX) / mapState.camera.pxPerAU;
   const dy = (e.clientY - lastDragY) / mapState.camera.pxPerAU;
-  if (trackedSystemId) {
+  if (mapState.trackedSystemId) {
     // Direct manipulation - set value AND target together so there's no
     // lag or residual chase while the user is actively dragging.
     const newX = animGet('camera:offsetX', 0) - dx;
@@ -199,9 +394,40 @@ function buildSidebar() {
   const rows = el.querySelectorAll('.bodyRow');
   for (let i = 0; i < rows.length; i++) {
     rows[i].addEventListener('click', function () {
-      jumpToBody(this.getAttribute('data-sys'), this.getAttribute('data-body'));
+      const sysId = this.getAttribute('data-sys');
+      const bodyId = this.getAttribute('data-body');
+      const rp = mapState.routePlanner;
+
+      if (rp.pendingRole === 'from') {
+        rp.fromSystemId = sysId; rp.fromBodyId = bodyId; rp.fromT = mapState.t;
+        rp.pendingRole = null;
+      } else if (rp.pendingRole === 'to') {
+        rp.toSystemId = sysId; rp.toBodyId = bodyId; rp.toT = mapState.t;
+        rp.pendingRole = null;
+      } else {
+        jumpToBody(sysId, bodyId);
+        return;
+      }
+
+      if (rp.fromSystemId && rp.toSystemId) {
+        const fromName = mapState.systems[rp.fromSystemId].bodies[rp.fromBodyId].name;
+        const toName = mapState.systems[rp.toSystemId].bodies[rp.toBodyId].name;
+        const fromXY = worldPointFor(rp.fromSystemId, rp.fromBodyId, rp.fromT, fromName);
+        const toXY = worldPointFor(rp.toSystemId, rp.toBodyId, rp.toT, toName);
+
+        setRoute(mapState.currentRoutes, 'manual', fromName + ' -> ' + toName, [fromXY, toXY]);
+        renderActiveRoutesList();
+
+        const section = buildRouteSection(
+          { systemId: rp.fromSystemId, bodyId: rp.fromBodyId, t: rp.fromT },
+          { systemId: rp.toSystemId, bodyId: rp.toBodyId, t: rp.toT },
+          fromName, toName, fromXY, toXY
+        );
+        renderRouteSections(fromName + ' -> ' + toName, [section]);
+      }
     });
   }
+
   const headers = el.querySelectorAll('.sysHeader');
   for (let i = 0; i < headers.length; i++) {
     headers[i].addEventListener('click', function () {
@@ -239,15 +465,20 @@ function loop(nowMs) {
     const dYears = (daysPerRealMinute * (deltaMs / 60000)) / 365.25;
     mapState.t += dYears;
     elapsedPlaybackYears += dYears;
+
+    if (watchUntilT !== null && mapState.t >= watchUntilT) {
+      mapState.t = watchUntilT;
+      playing = false;
+      watchUntilT = null;
+      document.getElementById('playBtn').textContent = 'Play';
+    }
   }
 
-  if (trackedSystemId) {
-    const origin = getSystemWorldOrigin(trackedSystemId, mapState.t);
+  if (mapState.trackedSystemId) {
+    const origin = getSystemWorldOrigin(mapState.trackedSystemId, mapState.t);
     mapState.camera.x = origin.x + animGet('camera:offsetX', 0);
     mapState.camera.y = origin.y + animGet('camera:offsetY', 0);
   }
-
-  advancePrecession(mapState.t); // the "update" half of update/render
 
   clockDisplay.textContent = simTimeToDate(mapState.t).toISOString().slice(0, 10) + '  ' + formatClock(elapsedPlaybackYears);
 

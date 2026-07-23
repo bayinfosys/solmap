@@ -4,8 +4,8 @@
 <link rel="stylesheet" href="style.css">
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orbital Map: a real, physically-grounded solar system map</title>
-<meta name="description" content="An interactive solar system map with real orbital mechanics, real Lagrange points, apsidal precession, and a per-pixel gravitational terrain view. No illustration, no game engine - real computed physics in the browser.">
+<title>Orbital Map</title>
+<meta name="description" content="An interactive, scale-correct solar system map with orbital mechanics, Lagrange points, apsidal precession, and a per-pixel gravitational terrain view.">
 <link rel="canonical" href="https://www.bayis.co.uk/solmap/">
 
 <meta property="og:type" content="website">
@@ -79,22 +79,26 @@
       <button id="jumpDateBtn">Go</button>
       <button id="jumpNowBtn">Now</button>
     </div>
+
     <div id="clockDisplay" class="clockBox">T+00:00:00</div>
     <div id="infoPanel" class="infoBox">Click a body to select it.</div>
+
+<div class="ctrlRow">
+  <button id="setFromBtn">Set departure</button>
+  <button id="setToBtn">Set arrival</button>
+</div>
+<div class="ctrlRow">
+  <select id="missionSelect">
+    <option value="">-- historical mission --</option>
+  </select>
+</div>
+<div id="missionInfo" class="missionBox">Select a departure and arrival body, or a historical mission, to see a route.</div>
+<div id="activeRoutes" class="missionBox">No routes displayed.</div>
+
     <div id="bodyList"></div>
   </div>
 </div>
 
-<script src="orbits.js"></script>
-<script src="systems.js"></script>
-<script src="systems-build.js"></script>
-<script src="anim.js"></script>
-<script src="physics.js"></script>
-<script src="worldpos.js"></script>
-<script src="lagrange.js"></script>
-<script src="epoch.js"></script>
-<script src="hillshade.js"></script>
-<script src="render.js"></script>
-<script src="main.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>

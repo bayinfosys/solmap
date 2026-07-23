@@ -1,3 +1,6 @@
+import { mapState } from './state.js';
+
+
 // Generic single-pole exponential smoothing toward a moving target -
 // the one mechanism behind every eased visual value in this app
 // (selection fade, camera zoom, camera pan-offset decay, and whatever
@@ -17,7 +20,7 @@
 // otherwise starting AT the target (i.e. no animation on first use,
 // a sensible default for channels like camera zoom that are explicitly
 // seeded elsewhere via animSetValue before this is ever called).
-function animSet(key, target, tauSec, initialValue) {
+export function animSet(key, target, tauSec, initialValue) {
   const channels = mapState.anim.channels;
   const ch = channels[key];
   if (!ch) {
@@ -32,16 +35,16 @@ function animSet(key, target, tauSec, initialValue) {
 // chase. Used for direct manipulation (dragging) and one-time seeding
 // (initial camera state) where "instant, no lag" is the correct
 // behaviour rather than easing.
-function animSetValue(key, value, target, tauSec) {
+export function animSetValue(key, value, target, tauSec) {
   mapState.anim.channels[key] = { value: value, target: target, tauSec: tauSec };
 }
 
-function animGet(key, defaultValue) {
+export function animGet(key, defaultValue) {
   const ch = mapState.anim.channels[key];
   return ch ? ch.value : (defaultValue !== undefined ? defaultValue : 0);
 }
 
-function animGetTarget(key, defaultValue) {
+export function animGetTarget(key, defaultValue) {
   const ch = mapState.anim.channels[key];
   return ch ? ch.target : (defaultValue !== undefined ? defaultValue : 0);
 }
@@ -53,7 +56,7 @@ function animGetTarget(key, defaultValue) {
 // a nonzero target (camera zoom, an always-relevant value) are kept
 // indefinitely, which is correct - they're not "finished", they're just
 // at rest.
-function advanceAnim(dtMs) {
+export function advanceAnim(dtMs) {
   const dt = dtMs / 1000;
   const channels = mapState.anim.channels;
   for (const key in channels) {
