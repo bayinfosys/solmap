@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kepler's equation: mean, eccentric and true anomaly, solved interactively | Orbital Map</title>
+<meta name="description" content="How to find where a planet is on its elliptical orbit at a given time: mean anomaly, eccentric anomaly, true anomaly, Kepler's equation M = E - e sin E and its Newton-Raphson solution, with interactive figures driven by the code behind the Orbital Map.">
+<link rel="canonical" href="https://www.bayis.co.uk/solmap/learn/keplers-equation/">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kepler's equation, solved and illustrated">
+<meta property="og:description" content="Mean, eccentric and true anomaly, Kepler's equation and its Newton-Raphson solution, with interactive figures.">
+<meta property="og:url" content="https://www.bayis.co.uk/solmap/learn/keplers-equation/">
+<meta property="og:image" content="https://www.bayis.co.uk/solmap/images/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Kepler's equation: mean, eccentric and true anomaly",
+  "description": "Interactive explanation of Kepler's equation and its numerical solution, as used by the Orbital Map.",
+  "url": "https://www.bayis.co.uk/solmap/learn/keplers-equation/",
+  "inLanguage": "en-GB",
+  "about": ["Kepler's equation", "Orbital mechanics", "Newton's method"],
+  "author": { "@type": "Organization", "name": "Bay Information Systems", "url": "https://www.bayis.co.uk/" },
+  "isPartOf": { "@type": "WebApplication", "name": "Orbital Map", "url": "https://www.bayis.co.uk/solmap/" }
+}
+</script>
+
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="../learn.css">
+</head>
+<body>
+
+<nav class="siteNav">
+  <a href="../../">Orbital Map</a>
+  <a href="./" aria-current="page">Kepler's equation</a>
+  <a href="../lagrange-points/">Lagrange points and Hill spheres</a>
+</nav>
+
+<main>
+<h1>Kepler's equation</h1>
+<p class="lead">
+  A planet's orbit is an ellipse, and its speed along that ellipse changes
+  all the time. Finding where the planet is at a given moment takes three
+  angles and one equation with no closed-form solution. This page walks
+  through each step. Every figure runs the same functions the
+  <a href="../../">Orbital Map</a> uses to place every planet and moon.
+</p>
+
+<h2>Time and angle on an ellipse</h2>
+<p>
+  Kepler's second law says the line from the Sun to a planet sweeps out
+  equal areas in equal times. Near periapsis (the closest point) the line
+  is short, so the planet moves fast; near apoapsis it moves slowly.
+  Angle around the orbit therefore does not advance at a constant rate.
+</p>
+<p>
+  The quantity that does advance at a constant rate is the
+  <strong>mean anomaly</strong>:
+</p>
+<p class="eq"><var>M</var> = <var>n</var> (<var>t</var> &minus; <var>t</var><sub>p</sub>),
+  &nbsp;&nbsp; <var>n</var> = &radic;(<var>GM</var> / <var>a</var><sup>3</sup>)</p>
+<p>
+  Here <var>n</var> is the mean motion (radians per unit time),
+  <var>a</var> the semi-major axis, <var>GM</var> the gravitational
+  parameter of the body being orbited, and <var>t</var><sub>p</sub> the
+  time of periapsis passage. <var>M</var> is a clock: it runs from 0 to
+  2&pi; once per orbit. What we need is the <strong>true anomaly</strong>
+  <var>&nu;</var>, the actual angle from periapsis to the planet, measured
+  at the focus. The bridge between them is a third angle, the
+  <strong>eccentric anomaly</strong> <var>E</var>.
+</p>
+
+<h2>Three anomalies</h2>
+<figure>
+  <canvas id="figGeometry" aria-label="Ellipse with auxiliary circle showing mean, eccentric and true anomaly"></canvas>
+  <div class="controls">
+    <label>e <input type="range" class="ctlE" min="0" max="0.95" step="0.001"><output></output></label>
+    <span id="presetsA"></span>
+  </div>
+  <div class="controls">
+    <label>M <input type="range" class="ctlM" min="0" max="360" step="0.1"><output></output></label>
+    <button class="playBtn">Pause</button>
+  </div>
+  <div class="readout" id="readoutA"></div>
+  <figcaption>
+    <span class="key" style="background:var(--color-route)"></span>mean anomaly <var>M</var>, at the centre, of a point moving uniformly round the circle;
+    <span class="key" style="background:var(--color-selected)"></span>eccentric anomaly <var>E</var>, at the centre, of the circle point directly above the body;
+    <span class="key" style="background:var(--color-lagrange)"></span>true anomaly <var>&nu;</var>, at the focus F, of the body itself.
+    Periapsis is to the right. Motion is anticlockwise.
+  </figcaption>
+</figure>
+<p>
+  Draw a circle of radius <var>a</var> around the ellipse's centre C (the
+  <em>auxiliary circle</em>). The Sun sits at the focus F, a distance
+  <var>ae</var> from the centre, where <var>e</var> is the eccentricity.
+  Project the planet perpendicular to the major axis onto the circle: the
+  angle of that circle point, measured at C, is <var>E</var>. The planet's
+  position follows directly from <var>E</var>:
+</p>
+<p class="eq"><var>x</var> = <var>a</var> (cos <var>E</var> &minus; <var>e</var>),
+  &nbsp;&nbsp; <var>y</var> = <var>b</var> sin <var>E</var>,
+  &nbsp;&nbsp; <var>b</var> = <var>a</var> &radic;(1 &minus; <var>e</var><sup>2</sup>)</p>
+<p>
+  with F at the origin. At <var>e</var> = 0 all three angles coincide. As
+  <var>e</var> grows they separate: the planet runs ahead of the uniform
+  clock <var>M</var> after periapsis and falls behind it before.
+</p>
+
+<h2>The equation</h2>
+<p>
+  The area swept from periapsis to the planet, measured from F, is the
+  circle's sector area scaled by <var>b</var>/<var>a</var>, minus the
+  triangle formed by the centre, the focus and the planet. That works out as
+  &frac12;<var>ab</var>(<var>E</var> &minus; <var>e</var> sin
+  <var>E</var>). The whole ellipse has area &pi;<var>ab</var>. By the
+  second law the swept fraction equals the elapsed fraction of the
+  period, <var>M</var> / 2&pi;. Equating the two gives Kepler's equation:
+</p>
+<p class="eq"><var>M</var> = <var>E</var> &minus; <var>e</var> sin <var>E</var></p>
+<p>
+  Going from <var>E</var> to <var>M</var> is one line of arithmetic. The
+  direction needed in practice, from a time (<var>M</var>) to a position
+  (<var>E</var>), has no solution in elementary functions. It has to be
+  solved numerically.
+</p>
+
+<h2>Solving it with Newton-Raphson</h2>
+<figure>
+  <canvas id="figSolve" aria-label="Plot of M against E with Newton-Raphson iterations"></canvas>
+  <div class="controls">
+    <label>e <input type="range" class="ctlE" min="0" max="0.95" step="0.001"><output></output></label>
+    <label>M <input type="range" class="ctlM" min="0" max="360" step="0.1"><output></output></label>
+    <button class="playBtn">Pause</button>
+    <button id="startModeBtn">start: as code</button>
+  </div>
+  <table class="data" id="iterTable"></table>
+  <figcaption>
+    <span class="key" style="background:var(--color-selected)"></span>the curve <var>M</var>(<var>E</var>) = <var>E</var> &minus; <var>e</var> sin <var>E</var>;
+    <span class="key" style="background:var(--color-route)"></span>the target <var>M</var>;
+    <span class="key" style="background:var(--color-lagrange)"></span>Newton steps: follow the tangent from the current guess down to the target line, then back up to the curve.
+    The dashed diagonal is the circular case, <var>E</var> = <var>M</var>.
+  </figcaption>
+</figure>
+<p>
+  Write <var>f</var>(<var>E</var>) = <var>E</var> &minus; <var>e</var> sin
+  <var>E</var> &minus; <var>M</var>. Its derivative is 1 &minus; <var>e</var>
+  cos <var>E</var>, which is positive for any <var>e</var> &lt; 1, so
+  <var>f</var> increases steadily and has exactly one root. Newton's
+  method replaces the curve with its tangent at the current guess and
+  jumps to where the tangent crosses zero:
+</p>
+<p class="eq"><var>E</var><sub>k+1</sub> = <var>E</var><sub>k</sub> &minus;
+  (<var>E</var><sub>k</sub> &minus; <var>e</var> sin <var>E</var><sub>k</sub> &minus; <var>M</var>)
+  / (1 &minus; <var>e</var> cos <var>E</var><sub>k</sub>)</p>
+<p>
+  Each step roughly doubles the number of correct digits. The map starts
+  from <var>E</var><sub>0</sub> = <var>M</var>, or from
+  <var>E</var><sub>0</sub> = &pi; when <var>e</var> &ge; 0.8, and stops
+  once a step changes <var>E</var> by less than 10<sup>&minus;8</sup>
+  radians. Over a full orbit this takes at most three iterations for most
+  planets and four for Mercury and Pluto; Nereid, at <var>e</var> = 0.75,
+  needs up to six. The
+  &pi; start for high eccentricity avoids the case where the tangent near
+  periapsis is almost flat and the first step overshoots. To see it, set
+  <var>e</var> near 0.9 and <var>M</var> to a few degrees, then switch the
+  figure's starting guess between the code's choice and
+  <var>E</var><sub>0</sub> = <var>M</var>.
+</p>
+<pre><code>export function solveKepler(M, e, tol) {
+  tol = tol || 1e-8;
+  M = ((M % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  let E = e &lt; 0.8 ? M : Math.PI;
+  for (let i = 0; i &lt; 50; i++) {
+    const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) &lt; tol) break;
+  }
+  return E;
+}</code></pre>
+
+<h2>From eccentric anomaly to position</h2>
+<p>With <var>E</var> known, the true anomaly and the distance from the focus are</p>
+<p class="eq">tan(<var>&nu;</var>/2) = &radic;((1 + <var>e</var>) / (1 &minus; <var>e</var>)) tan(<var>E</var>/2),
+  &nbsp;&nbsp; <var>r</var> = <var>a</var> (1 &minus; <var>e</var> cos <var>E</var>)</p>
+<p>
+  The code evaluates the half-angle form with a two-argument arctangent,
+  so the result lands in the correct quadrant without special cases. The
+  final angle in the map's frame adds the argument of periapsis
+  <var>&omega;</var>, the direction the ellipse points:
+</p>
+<pre><code>export function trueAnomalyFromE(E, e) {
+  return 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2),
+                        Math.sqrt(1 - e) * Math.cos(E / 2));
+}
+
+// inside ellipseState(...)
+const M = n * (t - tp);
+const E = solveKepler(M, e);
+const nu = trueAnomalyFromE(E, e) * direction;
+const r = a * (1 - e * Math.cos(E));
+const theta = omega + nu;
+return { r, theta, x: r * Math.cos(theta), y: r * Math.sin(theta) };</code></pre>
+
+<h2>Equal areas in equal times</h2>
+<figure>
+  <canvas id="figAreas" aria-label="Ellipse divided into twelve sectors swept in equal times"></canvas>
+  <div class="controls">
+    <label>e <input type="range" class="ctlE" min="0" max="0.95" step="0.001"><output></output></label>
+    <label>sectors <input type="range" id="ctlN" min="4" max="36" step="1" value="12"><output></output></label>
+  </div>
+  <div class="readout" id="readoutC"></div>
+  <figcaption>
+    The orbit split into sectors that take equal time, found by solving
+    Kepler's equation at evenly spaced values of <var>M</var>. The readout
+    measures each sector's area numerically from the drawn points.
+  </figcaption>
+</figure>
+<p>
+  Solving Kepler's equation at evenly spaced times divides the ellipse
+  into sectors of equal area: long thin ones near periapsis, short wide
+  ones near apoapsis. The ratio of speeds at the two ends follows from
+  conservation of angular momentum, <var>v</var><sub>peri</sub> /
+  <var>v</var><sub>apo</sub> = (1 + <var>e</var>) / (1 &minus;
+  <var>e</var>). For Earth that ratio is about 1.03; for Neptune's moon
+  Nereid, at <var>e</var> = 0.75, it is about 7.
+</p>
+
+<h2>In the map</h2>
+<p>
+  Every body in the <a href="../../">Orbital Map</a> is placed this way,
+  every frame, from orbital elements at the J2000 epoch
+  (2000-01-01 12:00 UTC). The functions on this page are
+  <code>solveKepler</code>, <code>trueAnomalyFromE</code> and
+  <code>ellipseState</code> in
+  <a href="https://github.com/bayinfosys/solmap/blob/master/core/orbits.js">core/orbits.js</a>.
+  The model has known limits: each orbit is a two-body ellipse around its
+  parent, with no mutual perturbation between planets, and the map is
+  flat, so orbital inclination is ignored.
+</p>
+<p>
+  Next: <a href="../lagrange-points/">Lagrange points and Hill spheres</a>,
+  the places where two gravitational fields and an orbit balance.
+</p>
+</main>
+
+<footer>
+  Orbital Map is open source (<a href="https://github.com/bayinfosys/solmap">github.com/bayinfosys/solmap</a>, GPL v3).
+  Built by <a href="https://www.bayis.co.uk/">Bay Information Systems</a>.
+</footer>
+
+<script type="module" src="kepler-page.js"></script>
+</body>
+</html>

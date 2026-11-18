@@ -1,0 +1,15 @@
+/* Shared colour tokens for the map (index.html) and the explainer
+   pages under learn/. render.js and learn/figure.js read these at load. */
+:root {
+  --color-bg: #05070d;
+  --color-selected: #55ffdd;
+  --color-text: #c9d6e8;
+  --color-lagrange: #ff6b6b;
+  --color-lagrange-dim: #7a5a52;
+  --color-orbit: #223344;
+  --color-sun: #ffd35c;
+  --color-route: #ffb347;
+  --label-bg: #ffffff;
+  --label-text: #111111;
+  --label-outline: #000000;
+}
