@@ -230,7 +230,7 @@ PRESETS.forEach(function (p) {
   btn.addEventListener('click', function () { setE(body.e, null); });
   presetBox.appendChild(btn);
 });
-presetBox.className = 'controls';
+presetBox.classList.add('controls');
 presetBox.style.margin = '0';
 
 const playBtns = Array.prototype.slice.call(document.querySelectorAll('.playBtn'));

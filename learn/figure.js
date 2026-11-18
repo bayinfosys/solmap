@@ -32,7 +32,9 @@ export function setupFigure(canvas, aspect, draw) {
     draw(fig);
   }
   new ResizeObserver(resize).observe(canvas);
-  fig.redraw = function () { draw(fig); };
+  // Redraw requests before the first layout (w = 0) are ignored; the
+  // ResizeObserver callback draws once the canvas has a size.
+  fig.redraw = function () { if (fig.w > 0) draw(fig); };
   return fig;
 }
 
