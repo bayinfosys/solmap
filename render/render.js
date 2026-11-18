@@ -1,4 +1,5 @@
 import { mapState } from '../state/state.js';
+import { displayOptions } from '../state/displayOptions.js';
 import { ellipseState, orbitPeriodYears } from '../core/orbits.js';
 import { animGet } from '../state/anim.js';
 import { getChildSystems, getSystemMaxOrbitRadius } from '../physics/worldpos.js';
@@ -167,8 +168,6 @@ function drawTriangleOutline(ctx, points, cumulativeScale, color, widthPx) {
   ctx.stroke();
 }
 
-let chipsEnabled = true;
-
 // Opaque white chip, solid black text, single-pixel black outline -
 // fully opaque throughout, so nothing can compound across overlapping
 // calls the way the old semi-transparent version could. The textColor
@@ -177,7 +176,6 @@ let chipsEnabled = true;
 // need editing, but every chip reads in a consistent black-on-white
 // style regardless of which feature it belongs to.
 function drawLabelChip(ctx, x, y, text, textColorUnused, cumulativeScale) {
-  if (!chipsEnabled) return;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(1 / cumulativeScale, 1 / cumulativeScale);
@@ -211,7 +209,7 @@ function drawBodyOrbitMarkers(ctx, body, omega, cumulativeScale, color, showLabe
   const extrema = computeOrbitExtrema(body.a, body.e, omega);
   drawDiamond(ctx, extrema.periapsis.x, extrema.periapsis.y, 2.5, cumulativeScale, color);
   drawDiamond(ctx, extrema.apoapsis.x, extrema.apoapsis.y, 2.5, cumulativeScale, color);
-  if (showLabels) {
+  if (showLabels && displayOptions.orbitLabels) {
     drawLabelChip(ctx, extrema.periapsis.x, extrema.periapsis.y - 10 / cumulativeScale, 'periapsis ' + formatDistanceAU(extrema.periapsis.r), color, cumulativeScale);
     drawLabelChip(ctx, extrema.apoapsis.x, extrema.apoapsis.y - 10 / cumulativeScale, 'apoapsis ' + formatDistanceAU(extrema.apoapsis.r), color, cumulativeScale);
   }
@@ -223,7 +221,9 @@ function drawBodyOrbitMarkers(ctx, body, omega, cumulativeScale, color, showLabe
 // shows eccentricity in action.
 function drawBodyLiveDistance(ctx, currentState, cumulativeScale, color) {
   drawLine(ctx, 0, 0, currentState.x, currentState.y, cumulativeScale, hexToRgba(theme.text, 0.3), 1);
-  drawLabelChip(ctx, currentState.x / 2, currentState.y / 2, 'r = ' + formatDistanceAU(currentState.r), color, cumulativeScale);
+  if (displayOptions.liveDistanceLabel) {
+    drawLabelChip(ctx, currentState.x / 2, currentState.y / 2, 'r = ' + formatDistanceAU(currentState.r), color, cumulativeScale);
+  }
 }
 
 function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
@@ -240,31 +240,25 @@ function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
 
   const color = pts.degenerate ? theme.lagrangeDim : theme.lagrange;
 
-  // Labels dropped to plain "L1".."L5" - the primary-secondary prefix
-  // was redundant once you're already looking at the selected body.
+  // drawLagrangePoints - point labels and the triangle side-length label
+  // both gated; the diamonds, triangles, and Hill-radius circle are not
   ['L1', 'L2', 'L3', 'L4', 'L5'].forEach(function (key) {
     const p = pts[key];
     drawDiamond(ctx, p.x, p.y, 3, cumulativeScale, color);
-    if (isSelected) {
+    if (isSelected && displayOptions.lagrangeLabels) {
       drawLabelChip(ctx, p.x, p.y - 8 / cumulativeScale, key, color, cumulativeScale);
     }
   });
 
   if (isSelected) {
     drawWorldCircle(ctx, st.x, st.y, pts.hillRadius, cumulativeScale, hexToRgba(theme.lagrange, 0.4), 1);
-    // Hill radius moved to the sidebar (see main.js selectBody) - no
-    // longer labelled here, matches the "constants off-canvas" principle.
-
     drawTriangleOutline(ctx, [{ x: 0, y: 0 }, { x: st.x, y: st.y }, { x: pts.L4.x, y: pts.L4.y }], cumulativeScale, hexToRgba(theme.lagrange, 0.55), 1);
     drawTriangleOutline(ctx, [{ x: 0, y: 0 }, { x: st.x, y: st.y }, { x: pts.L5.x, y: pts.L5.y }], cumulativeScale, hexToRgba(theme.lagrange, 0.55), 1);
 
-    // Side-length label now sits at the MIDPOINT of the actual edge it
-    // measures (primary to secondary), not at a vertex - removes the
-    // "distance from where?" ambiguity you flagged. Equal-sides property
-    // of the equilateral triangle means this one label still correctly
-    // states the length of all three edges.
-    const sideLength = Math.sqrt(st.x * st.x + st.y * st.y);
-    drawLabelChip(ctx, st.x / 2, st.y / 2 - 14 / cumulativeScale, 'triangle side = ' + formatDistanceAU(sideLength), theme.lagrange, cumulativeScale);
+    if (displayOptions.lagrangeLabels) {
+      const sideLength = Math.sqrt(st.x * st.x + st.y * st.y);
+      drawLabelChip(ctx, st.x / 2, st.y / 2 - 14 / cumulativeScale, 'triangle side = ' + formatDistanceAU(sideLength), theme.lagrange, cumulativeScale);
+    }
   }
 }
 
@@ -298,12 +292,12 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
       drawBodyLiveDistance(ctx, st, cumulativeScale, hexToRgba(theme.text, fadeT));
     }
 
-    if (mapState.lagrangeEnabled && systemId === mapState.selected.systemId) {
+    if (displayOptions.lagrangeEnabledn && systemId === mapState.selected.systemId) {
       drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale);
     }
 
     const naturalFontScreenPx = 10;
-    if (naturalFontScreenPx >= LABEL_CULL_FONT_PX) {
+    if (displayOptions.bodyNameLabels && naturalFontScreenPx >= LABEL_CULL_FONT_PX) {
       const screenFontPx = Math.max(LABEL_MIN_FONT_PX, naturalFontScreenPx);
       ctx.save();
       ctx.translate(st.x + 8 / cumulativeScale, st.y - 8 / cumulativeScale);
@@ -374,7 +368,7 @@ function drawGravityHillshade(ctx, w, h) {
   const bounds = { xMin: cam.x - halfW, xMax: cam.x + halfW, yMin: cam.y - halfH, yMax: cam.y + halfH };
 
   let massPoints = gatherRelevantMassPoints(mapState.t, bounds);
-  if (mapState.layers.hillshadeResidual && mapState.trackedSystemId) {
+  if (displayOptions.hillshadeResidual && mapState.trackedSystemId) {
     massPoints = excludeSystemPrimary(massPoints, mapState.trackedSystemId);
   }
   const result = computeHillshadeBuffer(massPoints, bounds, hillshadeConfig);
@@ -391,7 +385,7 @@ function drawGravityHillshade(ctx, w, h) {
 
   ctx.drawImage(hillshadeCanvas, 0, 0, w, h);
 
-  if (mapState.layers.hillshadeHistogram) {
+  if (displayOptions.hillshadeHistogram) {
     drawHistogramOverlay(ctx, w, h, result);
   }
 }
@@ -419,7 +413,9 @@ function drawRoute(ctx, points, cumulativeScale, color) {
 
   points.forEach(function (p) {
     drawDiamond(ctx, p.x, p.y, 4, cumulativeScale, color);
-    drawLabelChip(ctx, p.x, p.y - 12 / cumulativeScale, p.label, color, cumulativeScale);
+    if (displayOptions.routeLabels) {
+      drawLabelChip(ctx, p.x, p.y - 12 / cumulativeScale, p.label, color, cumulativeScale);
+    }
   });
 }
 
@@ -427,7 +423,7 @@ export function drawMap(ctx, w, h) {
   ctx.fillStyle = theme.bg;
   ctx.fillRect(0, 0, w, h);
 
-  if (mapState.layers.hillshade) {
+  if (displayOptions.hillshade) {
     drawGravityHillshade(ctx, w, h);
   }
 

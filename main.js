@@ -1,3 +1,4 @@
+import { displayOptions } from './state/displayOptions.js';
 import { mapState } from './state/state.js';
 import { animSetValue, animSet, animGet, animGetTarget, advanceAnim } from './state/anim.js';
 import { getSystemWorldOrigin, getSystemMaxOrbitRadius, getBodyWorldPosition } from './physics/worldpos.js';
@@ -252,15 +253,16 @@ document.getElementById('resetViewBtn').addEventListener('click', function () {
 });
 
 document.getElementById('hillshadeToggle').addEventListener('change', function (e) {
-  mapState.layers.hillshade = e.target.checked;
+  displayOptions.hillshade = e.target.checked;
 });
-
 document.getElementById('histToggle').addEventListener('change', function (e) {
-  mapState.layers.hillshadeHistogram = e.target.checked;
+  displayOptions.hillshadeHistogram = e.target.checked;
 });
-
 document.getElementById('residualToggle').addEventListener('change', function (e) {
-  mapState.layers.hillshadeResidual = e.target.checked;
+  displayOptions.hillshadeResidual = e.target.checked;
+});
+document.getElementById('lagrangeGlobalToggle').addEventListener('change', function (e) {
+  displayOptions.lagrangeEnabled = e.target.checked;
 });
 
 // Eases both pan (camera:offsetX/Y chasing 0) and zoom (camera:logZoom -
@@ -434,10 +436,6 @@ function buildSidebar() {
   }
 }
 buildSidebar();
-
-document.getElementById('lagrangeGlobalToggle').addEventListener('change', function (e) {
-  mapState.lagrangeEnabled = e.target.checked;
-});
 
 // Formats a small elapsed-time value (years) as a HH:MM:SS stopwatch.
 // Only ever called on elapsedPlaybackYears, which is >= 0 by
