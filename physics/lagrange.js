@@ -42,10 +42,14 @@ export function computeLagrangePoints(secondaryState, massRatio, direction) {
   const rL1 = r - rH;
   const rL2 = r + rH;
 
-  // L3: on the far side of the primary, standard first-order correction
-  // (Euler's result) - slightly further out than exactly opposite the
-  // secondary, by a factor depending on mass ratio.
-  const rL3 = r * (1 + (7 / 12) * massRatio);
+  // L3: on the far side of the primary, first-order correction. Measured
+  // from the PRIMARY (this frame's origin) L3 sits slightly INSIDE the
+  // secondary's orbital radius, at r(1 - 7q/12). The often-quoted
+  // 1 + 5mu/12 is its distance from the barycentre, which is a
+  // different origin. Checked against the exact collinear root of the
+  // restricted three-body problem: q = 0.0123 (Earth-Moon) gives
+  // exact 0.99291, this formula 0.99282.
+  const rL3 = r * (1 - (7 / 12) * massRatio);
   const thetaL3 = theta + Math.PI;
 
   // L4, L5: exact equilateral-triangle positions - same distance from
