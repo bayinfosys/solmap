@@ -77,6 +77,7 @@ document distills what actually stuck.
 | `main.js` | UI wiring: camera pan/zoom/tracking, sidebar, date-jump, route-planner UI, the `requestAnimationFrame` loop. |
 | `core/epoch.js` | Real-date ⇄ simulation-time conversion (`dateToSimTime`/`simTimeToDate`), anchored to J2000. |
 | `theme.css` | Colour tokens as `:root` custom properties, shared by the map and the `learn/` pages. One known exception: route-marker colours in `routeLibrary.js` are plain hex. |
+| `nav.css` | Site link bar shared by the map and the `learn/` pages. |
 | `style.css` | Map layout only. |
 | `learn/` | Static explainer pages (`keplers-equation/`, `lagrange-points/`). Page scripts import from `core/` and `data/` only, so the pages run the map's own maths without constructing `mapState`. `figure.js`: shared canvas helpers, y-up like the map. Exact reference solutions (collinear Lagrange roots, rotating-frame RK4) live in the page scripts, not in `core/`. |
 

@@ -3,6 +3,10 @@
 html, body {
   margin: 0;
   height: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
   background: #05070d;
   color: #ccc;
   font-family: monospace;
@@ -10,8 +14,9 @@ html, body {
 }
 #wrap {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100vw;
-  height: 100vh;
 }
 #mainView {
   flex: 1 1 auto;
@@ -54,6 +59,7 @@ button:hover, select:hover { background: #2a3648; }
   border: 1px solid #234; padding: 6px; margin-bottom: 8px;
 }
 .infoBox a { color: #5fd; }
+.infoBox:empty { display: none; }   /* nothing selected yet */
 
 .infoName { font-size: 13px; font-weight: bold; color: var(--color-text); margin-bottom: 4px; }
 .infoList { list-style: none; margin: 0 0 6px 0; padding: 0; }
@@ -89,5 +95,3 @@ button:hover, select:hover { background: #2a3648; }
 }
 
 .missionLegPrimaryLocal { color: #9ab; }
-
-.learnBox { line-height: 1.5; }

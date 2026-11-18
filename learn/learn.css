@@ -13,19 +13,6 @@ html, body {
 
 a { color: var(--color-selected); }
 
-.siteNav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  padding: 10px 20px;
-  border-bottom: 1px solid #223;
-  background: #0b1018;
-  font-family: monospace;
-  font-size: 13px;
-}
-.siteNav a { text-decoration: none; }
-.siteNav a[aria-current="page"] { color: var(--color-text); }
-
 main {
   max-width: 780px;
   margin: 0 auto;

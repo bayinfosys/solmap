@@ -139,6 +139,7 @@ These are deliberate, understood simplifications:
 - `theme.css` - colour tokens as `:root` custom properties, shared by
   the map and the explainer pages. One known exception: route-marker
   colours in `routeLibrary.js` are plain hex.
+- `nav.css` - the link bar shared by the map and the explainer pages.
 - `style.css` - map layout.
 - `learn/` - explainer pages, one directory per topic, each a static
   `index.html` plus a page script importing from `core/` and `data/`
