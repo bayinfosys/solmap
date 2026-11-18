@@ -54,9 +54,12 @@ function slopeToNormal(gx, gy, steepnessGain) {
   return { nx: -(gx / mag) * sinT, ny: -(gy / mag) * sinT, nz: cosT };
 }
 
+// Light vector in WORLD coordinates (+y up the screen, matching the
+// y-flip in render.js drawMap). Azimuth is a compass bearing measured
+// clockwise from screen-up, so 315 is a light from the upper left.
 function lightDirection(azimuthDeg, elevationDeg) {
   const az = azimuthDeg * Math.PI / 180, el = elevationDeg * Math.PI / 180;
-  return { lx: Math.cos(el) * Math.sin(az), ly: -Math.cos(el) * Math.cos(az), lz: Math.sin(el) };
+  return { lx: Math.cos(el) * Math.sin(az), ly: Math.cos(el) * Math.cos(az), lz: Math.sin(el) };
 }
 
 function computeValueHistogram(tValues, numBins) {
@@ -87,8 +90,10 @@ function computeHillshadeBuffer(massPoints, bounds, config) {
   const span = Math.max(bounds.xMax - bounds.xMin, bounds.yMax - bounds.yMin);
   const softening = isFinite(minDist) ? Math.min(minDist * 0.02, span * 0.02) : span * 0.02;
 
+  // Row 0 is the TOP of the image, which is world yMax (world +y is up
+  // the screen - see render.js drawMap).
   for (let j = 0; j < resY; j++) {
-    const py = bounds.yMin + (bounds.yMax - bounds.yMin) * (j / (resY - 1));
+    const py = bounds.yMax - (bounds.yMax - bounds.yMin) * (j / (resY - 1));
     for (let i = 0; i < resX; i++) {
       const px = bounds.xMin + (bounds.xMax - bounds.xMin) * (i / (resX - 1));
       const idx = j * resX + i;

@@ -21,6 +21,12 @@ from real orbital elements at a real epoch (J2000), so the map can jump
 to any calendar date and the planets land where they actually were, or
 will be, to the accuracy of the underlying model.
 
+The map is viewed from above the north ecliptic pole, with +x pointing
+towards the vernal equinox (ecliptic longitude 0). Prograde orbits run
+anticlockwise; Triton, the one retrograde moon on the map, runs
+clockwise. At the March equinox Earth sits directly to the left of the
+Sun, and at the June solstice directly below it.
+
 On top of that:
 
 - **Lagrange points (L1–L5)** are computed for every eligible

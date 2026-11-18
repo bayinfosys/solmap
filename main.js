@@ -154,18 +154,20 @@ canvas.addEventListener('mousedown', function (e) {
 window.addEventListener('mouseup', function () { dragging = false; });
 window.addEventListener('mousemove', function (e) {
   if (!dragging) return;
+  // Screen +y is down, world +y is up (see render.js drawMap), so the
+  // vertical drag delta has the opposite sign to the horizontal one.
   const dx = (e.clientX - lastDragX) / mapState.camera.pxPerAU;
   const dy = (e.clientY - lastDragY) / mapState.camera.pxPerAU;
   if (trackedSystemId) {
     // Direct manipulation - set value AND target together so there's no
     // lag or residual chase while the user is actively dragging.
     const newX = animGet('camera:offsetX', 0) - dx;
-    const newY = animGet('camera:offsetY', 0) - dy;
+    const newY = animGet('camera:offsetY', 0) + dy;
     animSetValue('camera:offsetX', newX, newX, PAN_SMOOTH_TAU_SEC);
     animSetValue('camera:offsetY', newY, newY, PAN_SMOOTH_TAU_SEC);
   } else {
     mapState.camera.x -= dx;
-    mapState.camera.y -= dy;
+    mapState.camera.y += dy;
   }
   lastDragX = e.clientX; lastDragY = e.clientY;
 });

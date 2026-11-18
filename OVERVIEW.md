@@ -75,7 +75,7 @@ The final split, after a deliberate refactor:
 | `worldpos.js` | Recursive world-position queries (`getSystemWorldOrigin`, `getBodyWorldPosition`) — walks the nested system tree, no rendering. |
 | `lagrange.js` | Closed-form L1–L5 computation (Hill-sphere approximation) for any primary/secondary pair, given the secondary's current state and mass ratio. |
 | `hillshade.js` | The gravitational terrain renderer — see Section 4. Pure computation into a pixel buffer. |
-| `render.js` | The **render** half of the loop. All `ctx` calls live here. Draw primitives (`drawOrbitRing`, `drawDiamond`, `drawLabelChip`, etc.) take explicit colours as parameters rather than relying on caller-set `ctx` state. Theme colours are read once from CSS custom properties. |
+| `render.js` | The **render** half of the loop. All `ctx` calls live here. Draw primitives (`drawOrbitRing`, `drawDiamond`, `drawLabelChip`, etc.) take explicit colours as parameters rather than relying on caller-set `ctx` state. Theme colours are read once from CSS custom properties. Owns world-to-screen handedness: `drawMap` applies a negative y scale so world +y is up the screen (view from the north ecliptic pole, prograde anticlockwise); text drawn inside that transform counter-flips its own y scale. |
 | `main.js` | UI wiring: camera pan/zoom/tracking, sidebar, date-jump, the actual `requestAnimationFrame` loop (calls physics update, then draw). |
 | `epoch.js` | Real-date ⇄ simulation-time conversion (`dateToSimTime`/`simTimeToDate`), anchored to J2000. |
 | `style.css` | All colour values as `:root` custom properties — no hardcoded hex in JS. |

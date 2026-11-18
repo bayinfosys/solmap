@@ -23,7 +23,11 @@ function hillRadius(a, massRatio) {
 // frame as the secondary's own position (i.e. relative to the primary,
 // which sits at the origin of that frame) - consistent with how bodies
 // are already positioned relative to their system's origin elsewhere.
-function computeLagrangePoints(secondaryState, massRatio) {
+// direction: 1 = prograde (default), -1 = retrograde, as in ellipseState.
+// L4 is defined as the LEADING point, so it sits 60 degrees ahead in the
+// body's own direction of travel.
+function computeLagrangePoints(secondaryState, massRatio, direction) {
+  direction = direction || 1;
   const r = secondaryState.r;
   const theta = secondaryState.theta;
   const rH = hillRadius(r, massRatio);
@@ -44,8 +48,8 @@ function computeLagrangePoints(secondaryState, massRatio) {
   // the primary as the secondary itself, at +/-60 degrees. Position does
   // NOT depend on mass ratio (only long-term stability does, which this
   // map doesn't model).
-  const thetaL4 = theta + Math.PI / 3;
-  const thetaL5 = theta - Math.PI / 3;
+  const thetaL4 = theta + direction * Math.PI / 3;
+  const thetaL5 = theta - direction * Math.PI / 3;
 
   function polarToXY(rad, ang) {
     return { x: rad * Math.cos(ang), y: rad * Math.sin(ang), r: rad, theta: ang };
@@ -75,7 +79,7 @@ function getLagrangePointsWorld(systemId, bodyId, t) {
 
   const primaryOrigin = getSystemWorldOrigin(systemId, t);
   const st = ellipseState(body.a, body.e, body.omega, t, body.tp, sys.GM, body.direction);
-  const pts = computeLagrangePoints(st, body.massRatio);
+  const pts = computeLagrangePoints(st, body.massRatio, body.direction);
 
   const labelPrefix = getPrimaryName(systemId) + '-' + body.name;
 
