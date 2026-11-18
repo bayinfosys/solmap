@@ -3,7 +3,7 @@ import { displayOptions } from '../state/displayOptions.js';
 import { ellipseState, orbitPeriodYears } from '../core/orbits.js';
 import { animGet } from '../state/anim.js';
 import { getChildSystems, getSystemMaxOrbitRadius } from '../physics/worldpos.js';
-import { computeLagrangePoints } from '../physics/lagrange.js';
+import { computeLagrangePoints } from '../core/lagrange.js';
 import { gatherRelevantMassPoints, excludeSystemPrimary, computeHillshadeBuffer, hillshadeConfig } from './hillshade.js';
 import { getVisibleRoutes } from '../state/routeLibrary.js';
 

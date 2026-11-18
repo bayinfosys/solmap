@@ -5,7 +5,7 @@ import { getSystemWorldOrigin, getSystemMaxOrbitRadius, getBodyWorldPosition } f
 import { dateToSimTime, simTimeToDate } from './core/epoch.js';
 import { ellipseState, orbitalSpeed, orbitPeriodYears } from './core/orbits.js';
 import { computeOrbitExtrema, formatDistanceAU, drawMap } from './render/render.js';
-import { hillRadius } from './physics/lagrange.js';
+import { hillRadius } from './core/lagrange.js';
 import { computeRoute, KM_PER_SEC_PER_AU_PER_YEAR } from './physics/route.js';
 import { setRoute, removeRoute, setRouteVisible } from './state/routeLibrary.js';
 
