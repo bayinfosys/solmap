@@ -115,8 +115,10 @@ These are deliberate, understood simplifications:
   angle".
 - `physics/worldpos.js` — recursive world-position queries
   (`getSystemWorldOrigin`, `getBodyWorldPosition`), no rendering.
-- `physics/lagrange.js` — closed-form L1–L5 computation for any
-  primary/secondary pair, at a given `t`.
+- `core/lagrange.js` - pure Hill-radius and L1-L5 maths
+  (`hillRadius`, `computeLagrangePoints`); no imports, no state.
+- `physics/lagrange.js` - `getLagrangePointsWorld`, the mapState-bound
+  wrapper placing L1-L5 in world coordinates at a given `t`.
 - `physics/route.js` — route/delta-v planning. Walks the system tree
   to compute idealised Hohmann-transfer delta-v and transfer time
   between any two bodies at any two dates.
@@ -134,11 +136,28 @@ These are deliberate, understood simplifications:
   date-jump, route-planner UI, the `requestAnimationFrame` loop.
 - `core/epoch.js` — real-date ⇄ simulation-time conversion, anchored
   to J2000.
-- `style.css` — colour values as `:root` custom properties. One known
-  exception: route-marker colours in `routeLibrary.js` are plain hex.
+- `theme.css` - colour tokens as `:root` custom properties, shared by
+  the map and the explainer pages. One known exception: route-marker
+  colours in `routeLibrary.js` are plain hex.
+- `style.css` - map layout.
+- `learn/` - explainer pages, one directory per topic, each a static
+  `index.html` plus a page script importing from `core/` and `data/`
+  (never `state/`). `learn/figure.js` holds the shared canvas helpers
+  (same y-up handedness as the map); `learn/learn.css` the page layout.
 
 Adding a new body is a data-only change in `systems.js`. Adding a new
 historical mission is a data-only change in `missions.js`.
+
+## Documentation pages
+
+Interactive explanations of the maths behind the map, using the same
+functions and data:
+
+- [Kepler's equation](learn/keplers-equation/) - mean, eccentric and
+  true anomaly; Newton-Raphson solution; equal areas in equal times.
+- [Lagrange points and Hill spheres](learn/lagrange-points/) - effective
+  potential, exact against approximate L1-L5, planetary Hill radii,
+  L4/L5 stability with a live test particle.
 
 ## Running it locally
 

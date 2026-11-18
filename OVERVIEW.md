@@ -66,7 +66,8 @@ document distills what actually stuck.
 | `data/systems.js` | **Pure data, no execution.** `RAW_SYSTEMS` — one entry per system, one entry per body, raw sourced values only. Nothing in this file calls a function. |
 | `state/systems-build.js` | The load step. Converts raw definitions into runtime bodies, storing only fixed precession inputs (`omegaBase`, `omegaDotRadPerYear`, `tp`) — no mutable "current angle". |
 | `physics/worldpos.js` | Recursive world-position queries (`getSystemWorldOrigin`, `getBodyWorldPosition`), plus `getChildSystems`/`getPrimaryName`/`getSystemMaxOrbitRadius`. No rendering. |
-| `physics/lagrange.js` | Closed-form L1–L5 computation (Hill-sphere approximation) for any primary/secondary pair, given the secondary's state at a given `t` and mass ratio. |
+| `core/lagrange.js` | Pure closed-form L1-L5 computation (first-order small-mass-ratio approximation) and `hillRadius`, given the secondary's state and mass ratio. No imports. L3 is at r(1 - 7q/12) from the primary; L4 leads in the body's direction of travel. |
+| `physics/lagrange.js` | `getLagrangePointsWorld`: the mapState-bound wrapper that places the `core/lagrange.js` points in world coordinates. |
 | `render/hillshade.js` | The gravitational terrain renderer — see Section 4. Pure computation into a pixel buffer. |
 | `physics/route.js` | Route/delta-v planning. Walks the system tree to compute idealised Hohmann-transfer delta-v and transfer time between any two bodies at any two dates. See Section 6 for scope and known limitations. |
 | `data/missions.js` / `state/missions-build.js` | Historical mission waypoint data (dates, target bodies) and its load step — same data/execution split as `systems.js`/`systems-build.js`. Waypoints validate against the real system tree at load; a bad `systemId`/`bodyId` pair fails loudly. |
@@ -75,7 +76,9 @@ document distills what actually stuck.
 | `render/render.js` | The render half of the loop. All `ctx` calls live here. Draw primitives take explicit colours as parameters. Theme colours read once from CSS custom properties. Owns world-to-screen handedness: `drawMap` applies a negative y scale so world +y is up the screen (view from the north ecliptic pole, prograde anticlockwise); text drawn inside that transform counter-flips its own y scale. |
 | `main.js` | UI wiring: camera pan/zoom/tracking, sidebar, date-jump, route-planner UI, the `requestAnimationFrame` loop. |
 | `core/epoch.js` | Real-date ⇄ simulation-time conversion (`dateToSimTime`/`simTimeToDate`), anchored to J2000. |
-| `style.css` | Colour values as `:root` custom properties. One known exception: route-marker colours in `routeLibrary.js` are plain hex. |
+| `theme.css` | Colour tokens as `:root` custom properties, shared by the map and the `learn/` pages. One known exception: route-marker colours in `routeLibrary.js` are plain hex. |
+| `style.css` | Map layout only. |
+| `learn/` | Static explainer pages (`keplers-equation/`, `lagrange-points/`). Page scripts import from `core/` and `data/` only, so the pages run the map's own maths without constructing `mapState`. `figure.js`: shared canvas helpers, y-up like the map. Exact reference solutions (collinear Lagrange roots, rotating-frame RK4) live in the page scripts, not in `core/`. |
 
 The nested-system tree (`solar-system` → `jovian-system` → …) is a
 scene graph: each system knows its parent and which body it's anchored

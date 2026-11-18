@@ -89,3 +89,5 @@ button:hover, select:hover { background: #2a3648; }
 }
 
 .missionLegPrimaryLocal { color: #9ab; }
+
+.learnBox { line-height: 1.5; }

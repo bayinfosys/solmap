@@ -106,3 +106,10 @@ footer {
   font-size: 14px;
   color: #8a9ab0;
 }
+
+@media (max-width: 520px) {
+  main { padding: 16px 12px 48px; }
+  figure { padding: 6px; }
+  table.data th, table.data td { padding: 3px 4px; }
+  code, pre, .readout, .controls, table.data { font-size: 12px; }
+}
