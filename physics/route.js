@@ -25,7 +25,7 @@
 import { mapState } from '../state/state.js';
 import { ellipseState, orbitalSpeed, orbitPeriodYears } from '../core/orbits.js';
 import { KM_PER_AU } from '../data/systems.js';
-import { hillRadius } from './lagrange.js';
+import { hillRadius } from '../core/lagrange.js';
 import { getPrimaryName } from './worldpos.js';
 
 const SECONDS_PER_YEAR = 365.25 * 86400;

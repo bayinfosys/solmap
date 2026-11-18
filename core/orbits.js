@@ -19,7 +19,7 @@ export function keplerElementsFromEpochWithPrecession(meanLongitudeOrMDeg, longP
   return { omega: omega, tp: tp, omegaDotRadPerYear: omegaDotRadPerYear };
 }
 
-function solveKepler(M, e, tol) {
+export function solveKepler(M, e, tol) {
   tol = tol || 1e-8;
   M = ((M % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   let E = e < 0.8 ? M : Math.PI;
@@ -31,7 +31,7 @@ function solveKepler(M, e, tol) {
   return E;
 }
 
-function trueAnomalyFromE(E, e) {
+export function trueAnomalyFromE(E, e) {
   return 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2));
 }
 

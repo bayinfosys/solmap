@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lagrange points and Hill spheres: effective potential, positions and stability | Orbital Map</title>
+<meta name="description" content="Where the five Lagrange points L1 to L5 are and why, the effective potential of the restricted three-body problem, the Hill sphere of every planet, and the stability of L4 and L5, with interactive figures and a live test-particle simulation.">
+<link rel="canonical" href="https://www.bayis.co.uk/solmap/learn/lagrange-points/">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lagrange points and Hill spheres, illustrated">
+<meta property="og:description" content="The effective potential, the five Lagrange points, planetary Hill spheres and Trojan stability, with interactive figures.">
+<meta property="og:url" content="https://www.bayis.co.uk/solmap/learn/lagrange-points/">
+<meta property="og:image" content="https://www.bayis.co.uk/solmap/images/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Lagrange points and Hill spheres",
+  "description": "Interactive explanation of the five Lagrange points, the effective potential of the circular restricted three-body problem, Hill spheres and L4/L5 stability.",
+  "url": "https://www.bayis.co.uk/solmap/learn/lagrange-points/",
+  "inLanguage": "en-GB",
+  "about": ["Lagrange point", "Hill sphere", "Restricted three-body problem", "Trojan asteroids"],
+  "author": { "@type": "Organization", "name": "Bay Information Systems", "url": "https://www.bayis.co.uk/" },
+  "isPartOf": { "@type": "WebApplication", "name": "Orbital Map", "url": "https://www.bayis.co.uk/solmap/" }
+}
+</script>
+
+<link rel="stylesheet" href="../../theme.css">
+<link rel="stylesheet" href="../learn.css">
+</head>
+<body>
+
+<nav class="siteNav">
+  <a href="../../">Orbital Map</a>
+  <a href="../keplers-equation/">Kepler's equation</a>
+  <a href="./" aria-current="page">Lagrange points and Hill spheres</a>
+</nav>
+
+<main>
+<h1>Lagrange points and Hill spheres</h1>
+<p class="lead">
+  Take a planet orbiting the Sun, or a moon orbiting a planet. There are
+  five places where a third, much smaller object can sit and keep the
+  same position relative to both: the Lagrange points L1 to L5. Around
+  each body is a region where its own gravity controls what orbits it:
+  the Hill sphere. This page shows where both come from. The figures use
+  the same functions as the <a href="../../">Orbital Map</a>, alongside
+  an exact solution for comparison.
+</p>
+
+<h2>Two bodies and a third</h2>
+<p>
+  A primary of mass <var>M</var><sub>1</sub> and a secondary of mass
+  <var>m</var><sub>2</sub> orbit their common centre of mass on circles,
+  separated by a distance <var>a</var>, with angular speed <var>n</var>.
+  A third body too light to disturb them feels both their pulls. This is
+  the <em>circular restricted three-body problem</em>. The two bodies
+  are only characterised by the mass ratio
+  <var>q</var> = <var>m</var><sub>2</sub> / <var>M</var><sub>1</sub>,
+  or equivalently <var>&mu;</var> = <var>m</var><sub>2</sub> /
+  (<var>M</var><sub>1</sub> + <var>m</var><sub>2</sub>).
+</p>
+<p>
+  The problem simplifies in a frame that rotates with the pair. Both
+  bodies are then fixed, and the third body feels gravity plus two
+  apparent forces: a centrifugal push away from the centre of mass, and
+  a Coriolis force that acts sideways on anything moving in that frame.
+  The Lagrange points are the five places where gravity and the
+  centrifugal force cancel, so a body placed there at rest stays at
+  rest.
+</p>
+
+<h2>The effective potential</h2>
+<p>Gravity and the centrifugal force combine into a single effective potential:</p>
+<p class="eq"><var>&Phi;</var> = &minus;<var>GM</var><sub>1</sub>/<var>r</var><sub>1</sub>
+  &minus; <var>Gm</var><sub>2</sub>/<var>r</var><sub>2</sub>
+  &minus; &frac12; <var>n</var><sup>2</sup> <var>&rho;</var><sup>2</sup></p>
+<p>
+  where <var>r</var><sub>1</sub> and <var>r</var><sub>2</sub> are the
+  distances to the two bodies and <var>&rho;</var> the distance from the
+  centre of mass. The Lagrange points are where the slope of
+  <var>&Phi;</var> is zero.
+</p>
+<figure>
+  <canvas id="figPotential" aria-label="Effective potential of the restricted three-body problem with the five Lagrange points"></canvas>
+  <div class="controls">
+    <label>log<sub>10</sub> q <input type="range" class="ctlQ" min="-4" max="-0.5" step="0.01"><output></output></label>
+    <span class="presetsQ"></span>
+  </div>
+  <table class="data" id="pointTable"></table>
+  <figcaption>
+    Brightness is the effective potential: dark wells around the primary
+    (left) and secondary (right), bright hills at L4 and L5. The contours
+    pass through the potential at
+    <span class="key" style="background:var(--color-selected)"></span>L1,
+    <span class="key" style="background:var(--color-route)"></span>L2 and
+    <span class="key" style="background:var(--color-lagrange)"></span>L3.
+    White rings mark the exact points; red diamonds mark the map's
+    approximations. The dashed circle round the secondary is its Hill radius.
+    Distances in the table are from the primary, in units of <var>a</var>.
+  </figcaption>
+</figure>
+<p>
+  L1, L2 and L3 lie on the line through both bodies. Each is a saddle:
+  downhill along the line, uphill across it. L1 sits between the bodies,
+  L2 beyond the secondary, and L3 on the far side of the primary,
+  almost exactly opposite the secondary. L4 and L5 are the tops of the
+  two hills, 60 degrees ahead of and behind the secondary along its orbit.
+</p>
+<p>
+  The contours show the levels of <var>&Phi;</var> at L1, L2 and L3. A
+  body moving in the rotating frame keeps a fixed value of the Jacobi
+  constant, which confines it to regions where <var>&Phi;</var> stays
+  below a corresponding level. The L1 contour is a figure-eight: below
+  that level, a body near the secondary cannot reach the primary. The L1
+  contour therefore marks the boundary of the secondary's own region of
+  control.
+</p>
+
+<h2>Where the points are</h2>
+<p>
+  L4 and L5 have an exact position at every mass ratio: each forms an
+  equilateral triangle with the two bodies. The three collinear points
+  are roots of a fifth-degree polynomial with no closed form. For small
+  <var>q</var> they are close to the secondary or opposite it, and
+  first-order expansions give:
+</p>
+<p class="eq"><var>r</var><sub>L1,L2</sub> &asymp; <var>a</var> &mp; <var>r</var><sub>H</sub>,
+  &nbsp;&nbsp; <var>r</var><sub>H</sub> = <var>a</var> (<var>q</var>/3)<sup>1/3</sup>,
+  &nbsp;&nbsp; <var>r</var><sub>L3</sub> &asymp; <var>a</var> (1 &minus; 7<var>q</var>/12)</p>
+<p>
+  all measured from the primary. These are the formulas the map uses.
+  The table under the figure solves the exact positions numerically and
+  compares. For Sun-Jupiter (<var>q</var> &asymp; 0.001) the first-order
+  L1 is off by about 0.2 percent of <var>a</var>. For Earth-Moon
+  (<var>q</var> &asymp; 0.012) it is off by about 1 percent, roughly
+  3,500 km. The error grows with <var>q</var> because the expansion drops
+  terms in <var>q</var><sup>2/3</sup> and above.
+</p>
+<pre><code>export function hillRadius(a, massRatio) {
+  return a * Math.pow(massRatio / 3, 1 / 3);
+}
+
+// in computeLagrangePoints(secondaryState, massRatio, direction)
+const rL1 = r - rH;
+const rL2 = r + rH;
+const rL3 = r * (1 - (7 / 12) * massRatio);   // measured from the primary
+const thetaL4 = theta + direction * Math.PI / 3;   // L4 leads
+const thetaL5 = theta - direction * Math.PI / 3;</code></pre>
+
+<h2>Hill spheres</h2>
+<p>
+  The distance from the secondary to L1, <var>r</var><sub>H</sub> =
+  <var>a</var> (<var>q</var>/3)<sup>1/3</sup>, is the Hill radius. Inside
+  it the secondary's gravity dominates the tidal pull of the primary, so
+  a moon can orbit there. Outside it the primary takes over. The radius
+  grows with distance from the Sun and with the cube root of mass, which
+  is why the Hill radii of the giant planets, far out and massive, are
+  between about 140 and 300 times the Earth-Moon distance.
+</p>
+<figure>
+  <canvas id="figHill" aria-label="Hill radius of each planet with the orbits of its moons, on a logarithmic scale"></canvas>
+  <table class="data" id="hillTable"></table>
+  <figcaption>
+    Each bar runs out to the planet's Hill radius (logarithmic scale, km).
+    The dashed tick marks half the Hill radius. Dots are the semi-major
+    axes of the moons in the map's data; the hollow dot is Triton, which
+    orbits retrograde. All values are computed from
+    <code>data/systems.js</code>.
+  </figcaption>
+</figure>
+<p>
+  The Hill sphere is an upper bound. Numerical studies find that orbits
+  starting circular and prograde stay bound only out to about half the
+  Hill radius, and retrograde orbits out to nearly the full radius
+  (<a href="https://pages.astro.umd.edu/~dphamil/research/abstracts/HamBurns91.html">Hamilton and Burns, 1991</a>).
+  Every regular moon on the map sits well inside half the Hill radius.
+  The giant planets' small, distant irregular moons, most of them
+  retrograde, extend further out, towards the edge. They are not
+  currently on the map.
+</p>
+
+<h2>Stability of L4 and L5</h2>
+<p>
+  L4 and L5 are hilltops of the effective potential, so a body placed
+  near one might be expected to roll off. Many do not. Once the body
+  starts to move, the Coriolis force turns it sideways, and for small
+  enough <var>&mu;</var> that turns the slide into a loop around the
+  point. The condition, found by Gascheau in 1843 and Routh in 1875, is
+</p>
+<p class="eq"><var>&mu;</var> &lt; (1 &minus; &radic;(23/27)) / 2 &asymp; 0.0385</p>
+<figure>
+  <canvas id="figTrojan" aria-label="A test particle released near L4, integrated in the rotating frame"></canvas>
+  <div class="controls">
+    <label>log<sub>10</sub> q <input type="range" class="ctlQ" min="-4" max="-0.5" step="0.01"><output></output></label>
+    <span class="presetsQ"></span>
+  </div>
+  <div class="controls">
+    <label>start ahead of L4 <input type="range" id="ctlOffset" min="1" max="118" step="1" value="12"><output></output></label>
+    <button id="trojanPlay">Pause</button>
+    <button id="trojanRestart">Restart</button>
+  </div>
+  <div class="readout" id="readoutTrojan"></div>
+  <figcaption>
+    A test particle released at rest in the rotating frame, on the
+    secondary's orbit, some degrees ahead of L4. Its path is integrated
+    live (fourth-order Runge-Kutta) under the full equations of motion in
+    the rotating frame, Coriolis term included. Small offsets trace a
+    tadpole loop around L4. Starting close to L3 (an offset near 120
+    degrees) gives a horseshoe that also loops round L5; for Sun-Jupiter
+    the change comes between 110 and 115 degrees, and the first pass
+    round L3 takes about 60 orbits. Above the critical mass ratio the
+    particle leaves L4 within an orbit or two.
+  </figcaption>
+</figure>
+<p>
+  The Sun-Jupiter system (<var>&mu;</var> &asymp; 0.001) is well inside
+  the stable range, and over ten thousand Trojan asteroids are known
+  around Jupiter's L4 and L5. Earth has at least two known Trojans,
+  2010 TK7 and 2020 XL5. Earth-Moon (<var>&mu;</var> &asymp; 0.012) is
+  stable by this criterion, but the Sun's pull, which this model leaves
+  out, disturbs anything there. Pluto-Charon (<var>&mu;</var> &asymp;
+  0.11) is above the limit, so its L4 and L5 cannot hold anything.
+</p>
+<p>
+  L1, L2 and L3 are unstable at every mass ratio: a body there drifts off
+  within a few orbits without corrections. That is still useful.
+  Spacecraft orbit near the Sun-Earth L1 (SOHO, watching the Sun) and L2
+  (the James Webb Space Telescope, about 1.5 million km from Earth),
+  using small, regular thruster burns to stay in place.
+</p>
+
+<h2>In the map</h2>
+<p>
+  The <a href="../../">Orbital Map</a> draws L1 to L5 and the Hill sphere
+  for the selected body, using <code>hillRadius</code> and
+  <code>computeLagrangePoints</code> from
+  <a href="https://github.com/bayinfosys/solmap/blob/master/core/lagrange.js">core/lagrange.js</a>.
+  It applies the circular-orbit formulas to each body's current distance
+  from its primary, so on an eccentric orbit the points move in and out
+  with the body. For a retrograde moon such as Triton, L4 is placed
+  ahead of the body in its own direction of travel.
+</p>
+<p>
+  Previous: <a href="../keplers-equation/">Kepler's equation</a>, how
+  the map finds where each body is at a given time.
+</p>
+</main>
+
+<footer>
+  Orbital Map is open source (<a href="https://github.com/bayinfosys/solmap">github.com/bayinfosys/solmap</a>, GPL v3).
+  Built by <a href="https://www.bayis.co.uk/">Bay Information Systems</a>.
+</footer>
+
+<script type="module" src="lagrange-page.js"></script>
+</body>
+</html>
