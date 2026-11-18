@@ -294,7 +294,7 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
       drawBodyLiveDistance(ctx, st, cumulativeScale, hexToRgba(theme.text, fadeT));
     }
 
-    if (displayOptions.lagrangeEnabledn && systemId === mapState.selected.systemId) {
+    if (displayOptions.lagrangeEnabled && systemId === mapState.selected.systemId) {
       drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale);
     }
 
