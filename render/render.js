@@ -178,7 +178,9 @@ function drawTriangleOutline(ctx, points, cumulativeScale, color, widthPx) {
 function drawLabelChip(ctx, x, y, text, textColorUnused, cumulativeScale) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(1 / cumulativeScale, 1 / cumulativeScale);
+  // Negative y undoes the world y-flip applied in drawMap, so text is
+  // drawn upright in screen pixels.
+  ctx.scale(1 / cumulativeScale, -1 / cumulativeScale);
   ctx.font = LABEL_MIN_FONT_PX + 'px monospace';
   const metrics = ctx.measureText(text);
   const padX = 4, padY = 3;
@@ -210,8 +212,8 @@ function drawBodyOrbitMarkers(ctx, body, omega, cumulativeScale, color, showLabe
   drawDiamond(ctx, extrema.periapsis.x, extrema.periapsis.y, 2.5, cumulativeScale, color);
   drawDiamond(ctx, extrema.apoapsis.x, extrema.apoapsis.y, 2.5, cumulativeScale, color);
   if (showLabels && displayOptions.orbitLabels) {
-    drawLabelChip(ctx, extrema.periapsis.x, extrema.periapsis.y - 10 / cumulativeScale, 'periapsis ' + formatDistanceAU(extrema.periapsis.r), color, cumulativeScale);
-    drawLabelChip(ctx, extrema.apoapsis.x, extrema.apoapsis.y - 10 / cumulativeScale, 'apoapsis ' + formatDistanceAU(extrema.apoapsis.r), color, cumulativeScale);
+    drawLabelChip(ctx, extrema.periapsis.x, extrema.periapsis.y + 10 / cumulativeScale, 'periapsis ' + formatDistanceAU(extrema.periapsis.r), color, cumulativeScale);
+    drawLabelChip(ctx, extrema.apoapsis.x, extrema.apoapsis.y + 10 / cumulativeScale, 'apoapsis ' + formatDistanceAU(extrema.apoapsis.r), color, cumulativeScale);
   }
 }
 
@@ -232,7 +234,7 @@ function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
 
   const sys = mapState.systems[systemId];
   const st = ellipseState(body.a, body.e, body.omegaBase, body.omegaDotRadPerYear, t, body.tp, sys.GM, body.direction);
-  const pts = computeLagrangePoints(st, body.massRatio);
+  const pts = computeLagrangePoints(st, body.massRatio, body.direction);
 
   const isSelected = mapState.selected.systemId === systemId && mapState.selected.bodyId === bodyId;
   const apparentOrbitPx = st.r * cumulativeScale;
@@ -246,7 +248,7 @@ function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
     const p = pts[key];
     drawDiamond(ctx, p.x, p.y, 3, cumulativeScale, color);
     if (isSelected && displayOptions.lagrangeLabels) {
-      drawLabelChip(ctx, p.x, p.y - 8 / cumulativeScale, key, color, cumulativeScale);
+      drawLabelChip(ctx, p.x, p.y + 8 / cumulativeScale, key, color, cumulativeScale);
     }
   });
 
@@ -257,7 +259,7 @@ function drawLagrangePoints(ctx, systemId, bodyId, t, cumulativeScale) {
 
     if (displayOptions.lagrangeLabels) {
       const sideLength = Math.sqrt(st.x * st.x + st.y * st.y);
-      drawLabelChip(ctx, st.x / 2, st.y / 2 - 14 / cumulativeScale, 'triangle side = ' + formatDistanceAU(sideLength), theme.lagrange, cumulativeScale);
+      drawLabelChip(ctx, st.x / 2, st.y / 2 + 14 / cumulativeScale, 'triangle side = ' + formatDistanceAU(sideLength), theme.lagrange, cumulativeScale);
     }
   }
 }
@@ -300,8 +302,8 @@ function drawSystem(ctx, systemId, t, cumulativeScale) {
     if (displayOptions.bodyNameLabels && naturalFontScreenPx >= LABEL_CULL_FONT_PX) {
       const screenFontPx = Math.max(LABEL_MIN_FONT_PX, naturalFontScreenPx);
       ctx.save();
-      ctx.translate(st.x + 8 / cumulativeScale, st.y - 8 / cumulativeScale);
-      ctx.scale(1 / cumulativeScale, 1 / cumulativeScale);
+      ctx.translate(st.x + 8 / cumulativeScale, st.y + 8 / cumulativeScale);
+      ctx.scale(1 / cumulativeScale, -1 / cumulativeScale);
       ctx.font = screenFontPx + 'px monospace';
       ctx.fillStyle = fadeT > 0 ? lerpColor(theme.text, theme.selected, fadeT) : theme.text;
       ctx.fillText(b.name, 0, 0);
@@ -414,7 +416,7 @@ function drawRoute(ctx, points, cumulativeScale, color) {
   points.forEach(function (p) {
     drawDiamond(ctx, p.x, p.y, 4, cumulativeScale, color);
     if (displayOptions.routeLabels) {
-      drawLabelChip(ctx, p.x, p.y - 12 / cumulativeScale, p.label, color, cumulativeScale);
+      drawLabelChip(ctx, p.x, p.y + 12 / cumulativeScale, p.label, color, cumulativeScale);
     }
   });
 }
@@ -429,7 +431,16 @@ export function drawMap(ctx, w, h) {
 
   ctx.save();
   ctx.translate(w / 2, h / 2);
-  ctx.scale(mapState.camera.pxPerAU, mapState.camera.pxPerAU);
+  // World +y is drawn UP the screen. Canvas +y points down, so a
+  // positive y scale mirrors the map and every prograde orbit reads as
+  // clockwise. This negative y scale is the single place world-to-screen
+  // handedness is set: the view is from the north ecliptic pole, +x
+  // towards the vernal equinox, prograde motion anticlockwise.
+  // orbits.js keeps the standard convention (increasing theta is
+  // anticlockwise) untouched. Anything drawn as text inside this
+  // transform must apply its own negative y scale to stay upright, and
+  // "above" a point in world units is +y.
+  ctx.scale(mapState.camera.pxPerAU, -mapState.camera.pxPerAU);
   ctx.translate(-mapState.camera.x, -mapState.camera.y);
 
   drawFilledCircle(ctx, 0, 0, 7, mapState.camera.pxPerAU, theme.sun);

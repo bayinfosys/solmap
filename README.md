@@ -18,6 +18,11 @@ JavaScript, ES modules.
   at a real epoch (J2000); the map jumps to any calendar date and
   bodies land where they actually were or will be, to the accuracy of
   the underlying model.
+- **Orientation.** Viewed from above the north ecliptic pole, +x
+  towards the vernal equinox (ecliptic longitude 0). Prograde orbits
+  run anticlockwise; Triton, the one retrograde moon on the map, runs
+  clockwise. At the March equinox Earth sits directly to the left of
+  the Sun, and at the June solstice directly below it.
 - **Lagrange points (L1–L5)**, computed for every eligible
   parent/child pair, including the equilateral-triangle geometry of L4
   and L5 and each body's Hill sphere.

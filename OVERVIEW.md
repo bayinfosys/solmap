@@ -72,7 +72,7 @@ document distills what actually stuck.
 | `data/missions.js` / `state/missions-build.js` | Historical mission waypoint data (dates, target bodies) and its load step — same data/execution split as `systems.js`/`systems-build.js`. Waypoints validate against the real system tree at load; a bad `systemId`/`bodyId` pair fails loudly. |
 | `state/routeLibrary.js` | Keyed collection of currently displayed routes (mission or manually planned), independently toggleable — more than one route can be shown at once. |
 | `state/anim.js` | Generic single-pole exponential smoothing toward a moving target — every eased visual value (selection fade, camera zoom/pan) is one channel in a plain keyed collection. |
-| `render/render.js` | The render half of the loop. All `ctx` calls live here. Draw primitives take explicit colours as parameters. Theme colours read once from CSS custom properties. |
+| `render/render.js` | The render half of the loop. All `ctx` calls live here. Draw primitives take explicit colours as parameters. Theme colours read once from CSS custom properties. Owns world-to-screen handedness: `drawMap` applies a negative y scale so world +y is up the screen (view from the north ecliptic pole, prograde anticlockwise); text drawn inside that transform counter-flips its own y scale. |
 | `main.js` | UI wiring: camera pan/zoom/tracking, sidebar, date-jump, route-planner UI, the `requestAnimationFrame` loop. |
 | `core/epoch.js` | Real-date ⇄ simulation-time conversion (`dateToSimTime`/`simTimeToDate`), anchored to J2000. |
 | `style.css` | Colour values as `:root` custom properties. One known exception: route-marker colours in `routeLibrary.js` are plain hex. |
